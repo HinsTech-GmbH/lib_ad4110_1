@@ -1,0 +1,20 @@
+{
+    "name": "lib_ad4110_1",
+    "version": "0.1.0",
+    "keywords": "adc, afe, analog devices, ad, 4110",
+    "description": "C++ HAL for the Analog Devices AD4110-1SDZ AFE",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/HinsTech-GmbH/lib_ad4110_1.git"
+    },
+    "frameworks": [
+        "stm32cube",
+        "espidf"
+    ],
+    "platforms": [
+        "ststm32",
+        "espressif32"
+    ],
+    "build": {
+    }
+}
