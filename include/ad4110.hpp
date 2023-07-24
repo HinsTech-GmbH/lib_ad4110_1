@@ -147,6 +147,13 @@ public:
     );
 
     /**
+     * @brief initializes complex features of the class
+     * such as FreeRTOS semaphores. They cannot be initialized in the
+     * constructor because it causes some wired problems.
+     */
+    void initialize();
+
+    /**
      * @brief resets the AD4110-1 chip by writing 64 1s to it.
      * 
      * @return el::retcode 

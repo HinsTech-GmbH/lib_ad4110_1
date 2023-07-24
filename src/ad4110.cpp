@@ -25,9 +25,13 @@ AD4110::AD4110(
     address(_addr),
     cs_pin(_cs_pin),
     timeout_ticks(_timeout)
+{}
+
+void AD4110::initialize()
 {
     sem_spi_guard = xSemaphoreCreateBinaryStatic(&sem_buffer_spi_guard);
     configASSERT(sem_spi_guard);
+    xSemaphoreGive(sem_spi_guard);
 }
 
 el::retcode AD4110::transmitBytes(uint8_t _size)
@@ -63,6 +67,9 @@ el::retcode AD4110::transmitBytes(uint8_t _size)
         retval = el::retcode::err;
         goto cleanup;
     }
+    
+    // on success, also end transmission
+    cs_pin.write(1);
 
 cleanup:
     xSemaphoreGive(sem_spi_guard);
@@ -102,6 +109,9 @@ el::retcode AD4110::xmitBytes(uint8_t _size)
         retval = el::retcode::err;
         goto cleanup;
     }
+    
+    // on success, also end transmission
+    cs_pin.write(1);
 
 cleanup:
     xSemaphoreGive(sem_spi_guard);
