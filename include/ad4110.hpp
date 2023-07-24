@@ -24,40 +24,65 @@
 
 // Registers: MSB specifies AFE(1)/ADC(0), 4 LSBs register address
 // AFE registers
-#define AD_AFE_REG_AFE_TOP_STATUS       0x80
-#define AD_AFE_REG_AFE_CNTRL1           0x81
-// reserved 0x82
-#define AD_AFE_REG_AFE_CLK_CTRL         0x83
-#define AD_AFE_REG_AFE_CNTRL2           0x84
-#define AD_AFE_REG_PGA_RTD_CTRL         0x85
-#define AD_AFE_REG_AFE_ERR_DISABLE      0x86
-#define AD_AFE_REG_AFE_DETAIL_STATUS    0x87
-// reserved 0x88
-// reserved 0x89
-// reserved 0x8a
-// reserved 0x8b
-#define AD_AFE_REG_AFE_CAL_DATA         0x8c
-#define AD_AFE_REG_AFE_RSENSE_DATA      0x8d
-#define AD_AFE_REG_NO_PWR_DEFAULT_SEL   0x8e
-#define AD_AFE_REG_NO_PWR_DEFAULT_STATUS    0x8f
+#define AD_AFE_REG_ADDR_AFE_TOP_STATUS       0x80
+#define AD_AFE_REG_ADDR_AFE_CNTRL1           0x81
+#define AD_AFE_REG_ADDR_AFE_CLK_CTRL         0x83
+#define AD_AFE_REG_ADDR_AFE_CNTRL2           0x84
+#define AD_AFE_REG_ADDR_PGA_RTD_CTRL         0x85
+#define AD_AFE_REG_ADDR_AFE_ERR_DISABLE      0x86
+#define AD_AFE_REG_ADDR_AFE_DETAIL_STATUS    0x87
+#define AD_AFE_REG_ADDR_AFE_CAL_DATA         0x8c
+#define AD_AFE_REG_ADDR_AFE_RSENSE_DATA      0x8d
+#define AD_AFE_REG_ADDR_NO_PWR_DEFAULT_SEL   0x8e
+#define AD_AFE_REG_ADDR_NO_PWR_DEFAULT_STATUS    0x8f
+
+#define AD_AFE_REG_SIZE_AFE_TOP_STATUS       AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_CNTRL1           AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_CLK_CTRL         AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_CNTRL2           AD_REG_16
+#define AD_AFE_REG_SIZE_PGA_RTD_CTRL         AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_ERR_DISABLE      AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_DETAIL_STATUS    AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_CAL_DATA         AD_REG_16
+#define AD_AFE_REG_SIZE_AFE_RSENSE_DATA      AD_REG_16
+#define AD_AFE_REG_SIZE_NO_PWR_DEFAULT_SEL   AD_REG_16
+#define AD_AFE_REG_SIZE_NO_PWR_DEFAULT_STATUS    AD_REG_16
+
 
 // ADC registers
-#define AD_ADC_REG_ADC_STATUS           0x00
-#define AD_ADC_REG_ADC_MODE             0x01
-#define AD_ADC_REG_ADC_INTERFACE        0x02
-#define AD_ADC_REG_ADC_CONFIG           0x03
-#define AD_ADC_REG_DATA                 0x04
-#define AD_ADC_REG_FILTER               0x05
-#define AD_ADC_REG_ADC_GPIO_CONFIG      0x06
-#define AD_ADC_REG_ID                   0x07
-#define AD_ADC_REG_ADC_OFFSET0          0x08
-#define AD_ADC_REG_ADC_OFFSET1          0x09
-#define AD_ADC_REG_ADC_OFFSET2          0x0a
-#define AD_ADC_REG_ADC_OFFSET3          0x0b
-#define AD_ADC_REG_ADC_GAIN0            0x0c
-#define AD_ADC_REG_ADC_GAIN1            0x0d
-#define AD_ADC_REG_ADC_GAIN2            0x0e
-#define AD_ADC_REG_ADC_GAIN3            0x0f
+#define AD_ADC_REG_ADDR_ADC_STATUS           0x00
+#define AD_ADC_REG_ADDR_ADC_MODE             0x01
+#define AD_ADC_REG_ADDR_ADC_INTERFACE        0x02
+#define AD_ADC_REG_ADDR_ADC_CONFIG           0x03
+#define AD_ADC_REG_ADDR_DATA                 0x04
+#define AD_ADC_REG_ADDR_FILTER               0x05
+#define AD_ADC_REG_ADDR_ADC_GPIO_CONFIG      0x06
+#define AD_ADC_REG_ADDR_ID                   0x07
+#define AD_ADC_REG_ADDR_ADC_OFFSET0          0x08
+#define AD_ADC_REG_ADDR_ADC_OFFSET1          0x09
+#define AD_ADC_REG_ADDR_ADC_OFFSET2          0x0a
+#define AD_ADC_REG_ADDR_ADC_OFFSET3          0x0b
+#define AD_ADC_REG_ADDR_ADC_GAIN0            0x0c
+#define AD_ADC_REG_ADDR_ADC_GAIN1            0x0d
+#define AD_ADC_REG_ADDR_ADC_GAIN2            0x0e
+#define AD_ADC_REG_ADDR_ADC_GAIN3            0x0f
+
+#define AD_ADC_REG_SIZE_ADC_STATUS           AD_REG_8
+#define AD_ADC_REG_SIZE_ADC_MODE             AD_REG_16
+#define AD_ADC_REG_SIZE_ADC_INTERFACE        AD_REG_16
+#define AD_ADC_REG_SIZE_ADC_CONFIG           AD_REG_16
+#define AD_ADC_REG_SIZE_DATA                 AD_REG_24
+#define AD_ADC_REG_SIZE_FILTER               AD_REG_16
+#define AD_ADC_REG_SIZE_ADC_GPIO_CONFIG      AD_REG_16
+#define AD_ADC_REG_SIZE_ID                   AD_REG_16
+#define AD_ADC_REG_SIZE_ADC_OFFSET0          AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_OFFSET1          AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_OFFSET2          AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_OFFSET3          AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_GAIN0            AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_GAIN1            AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_GAIN2            AD_REG_24
+#define AD_ADC_REG_SIZE_ADC_GAIN3            AD_REG_24
 
 
 // general defines
@@ -71,6 +96,42 @@ enum ad_reg_size_t
     AD_REG_8 = 1,
     AD_REG_16 = 2,
     AD_REG_24 = 3,
+};
+
+// cache type for all AFE regs
+struct ad_regs_afe_t
+{
+    uint32_t afe_top_status;
+    uint32_t afe_cntrl1;
+    uint32_t afe_clk_ctrl;
+    uint32_t afe_cntrl2;
+    uint32_t pga_rtd_ctrl;
+    uint32_t afe_err_disable;
+    uint32_t afe_detail_status;
+    uint32_t afe_cal_data;
+    uint32_t afe_rsense_data;
+    uint32_t no_pwr_default_status;
+};
+
+// cache type for all ADC regs
+struct ad_regs_adc_t
+{
+    uint32_t adc_status;
+    uint32_t adc_mode;
+    uint32_t adc_interface;
+    uint32_t adc_config;
+    uint32_t data;
+    uint32_t filter;
+    uint32_t adc_gpio_config;
+    uint32_t id;
+    uint32_t adc_offset0;
+    uint32_t adc_offset1;
+    uint32_t adc_offset2;
+    uint32_t adc_offset3;
+    uint32_t adc_gain0;
+    uint32_t adc_gain1;
+    uint32_t adc_gain2;
+    uint32_t adc_gain3;
 };
 
 class AD4110
@@ -93,6 +154,10 @@ private:    // data
 
     // global timeout for any operation
     TickType_t timeout_ticks;
+
+public:     // data
+    ad_regs_afe_t afe_regs;
+    ad_regs_adc_t adc_regs;
 
 private:    // methods
 
@@ -163,6 +228,19 @@ public:
      * @retval nolock - SPI guard semaphore timeout
      */
     el::retcode reset();
+
+    /**
+     * @brief reads every register and updates the local cache with
+     * the values. This method aborts as soon as one read operation fails
+     * and returns the error code.
+     * 
+     * @return el::retcode 
+     * @retval ok - write successful
+     * @retval busy - SPI already busy
+     * @retval err - some other SPI error or invalid parameter
+     * @retval nolock - SPI guard semaphore timeout
+     */
+    el::retcode loadAllRegisters();
 
     /**
      * @brief writes to a register of the AD4110-1. It simply sends the write command and then
