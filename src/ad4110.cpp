@@ -5,7 +5,7 @@
  * @version 0.1
  * @date 2023-07-20
  *
- * @copyright Copyright HinsTech GmbH (c) 2023
+ * @copyright Copyright HinsTech GmbH (c) 2023-now
  *
  */
 
