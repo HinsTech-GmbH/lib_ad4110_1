@@ -129,13 +129,13 @@ el::retcode AD4110::writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _d
     }
     else if (_size == AD_REG_16)
     {
-        spi_write_buffer[1] = (uint8_t)(_data >> 1 & 0xff);
+        spi_write_buffer[1] = (uint8_t)(_data >> 8 & 0xff);
         spi_write_buffer[2] = (uint8_t)(_data & 0xff);
     }
     else if (_size == AD_REG_24)
     {
-        spi_write_buffer[1] = (uint8_t)(_data >> 2 & 0xff);
-        spi_write_buffer[2] = (uint8_t)(_data >> 1 & 0xff);
+        spi_write_buffer[1] = (uint8_t)(_data >> 16 & 0xff);
+        spi_write_buffer[2] = (uint8_t)(_data >> 8 & 0xff);
         spi_write_buffer[3] = (uint8_t)(_data & 0xff);
     }
     else
