@@ -87,43 +87,6 @@ private:    // methods
      */
     el::retcode xmitBytes(uint8_t _size);
 
-    /**
-     * @brief writes to a register of the AD4110-1. It simply sends the write command and then
-     * the data.
-     * 
-     * @param _reg register definition
-     * @param _size size of data to be written. use enumerations.
-     * @param _data data to be written. Only the amount of bytes defined by the data size is
-     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
-     * the three lowest bytes. The highest byte is always ignored.)
-     * 
-     * @return el::retcode 
-     * @retval ok - write successful
-     * @retval busy - SPI already busy
-     * @retval err - some other SPI error or invalid parameter
-     * @retval nolock - SPI guard semaphore timeout
-     * @retval invalid - invalid size
-     */
-    el::retcode writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _data);
-
-    /**
-     * @brief reads to a register from the AD4110-1. It simply sends the read command and then
-     * reads
-     * 
-     * @param _reg register definition
-     * @param _size size of data to be written. use enumerations.
-     * @param _data [out] data to be written. Only the amount of bytes defined by the data size is
-     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
-     * the three lowest bytes. The highest byte is always ignored.)
-     * 
-     * @return el::retcode 
-     * @retval ok - write successful
-     * @retval busy - SPI already busy
-     * @retval err - some other SPI error or invalid parameter
-     * @retval nolock - SPI guard semaphore timeout
-     * @retval invalid - invalid size
-     */
-    el::retcode readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_data);
 
 
 public:
@@ -167,5 +130,62 @@ public:
      * @retval see writeRegister()
      */
     el::retcode loadAllRegisters();
+
+    el::retcode writeAllRegisters();
+
+    /**
+     * @brief configures the chip with the minimum changes that need to be made 
+     * for it to run. For certain settings, default values will be used that can 
+     * be changed later. If any write operation fails, this function returns
+     * immediately. In order for it to be able to properly function, the register
+     * cache needs to have been initialized using loadAllRegisters() beforehand.
+     * 
+     * @return el::retcode 
+     * @retval see writeRegister()
+     */
+    el::retcode setup();
+
+    el::retcode updateStatus();
+
+    el::retcode readData(uint32_t *_output);
+
+
+    /**
+     * @brief writes to a register of the AD4110-1. It simply sends the write command and then
+     * the data.
+     * 
+     * @param _reg register definition
+     * @param _size size of data to be written. use enumerations.
+     * @param _data data to be written. Only the amount of bytes defined by the data size is
+     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
+     * the three lowest bytes. The highest byte is always ignored.)
+     * 
+     * @return el::retcode 
+     * @retval ok - write successful
+     * @retval busy - SPI already busy
+     * @retval err - some other SPI error or invalid parameter
+     * @retval nolock - SPI guard semaphore timeout
+     * @retval invalid - invalid size
+     */
+    el::retcode writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _data);
+
+    /**
+     * @brief reads to a register from the AD4110-1. It simply sends the read command and then
+     * reads
+     * 
+     * @param _reg register definition
+     * @param _size size of data to be written. use enumerations.
+     * @param _data [out] data to be written. Only the amount of bytes defined by the data size is
+     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
+     * the three lowest bytes. The highest byte is always ignored.)
+     * 
+     * @return el::retcode 
+     * @retval ok - write successful
+     * @retval busy - SPI already busy
+     * @retval err - some other SPI error or invalid parameter
+     * @retval nolock - SPI guard semaphore timeout
+     * @retval invalid - invalid size
+     */
+    el::retcode readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_data);
 
 };

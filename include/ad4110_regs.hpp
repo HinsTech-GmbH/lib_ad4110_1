@@ -183,8 +183,8 @@ struct ad_regs_adc_t
 // AFE_CLK_CTRL Register
 #define AD_MASK_AFE_CLK_CFG (0b1 << 4)      // AFE_CLK_CTRL Clock pin configuration (basically AFE clock enable since it must be written to 1 to work properly according to datasheet)
 
-#define AD_BITS_AFE_CLK_INTERN  0b0         // AFE_CLK_CTRL AFE clocked internally (default, aka. AFE clock disable)
-#define AD_BITS_AFE_CLK_BY_ADC  0b1         // AFE_CLK_CTRL AFE clocked by ADC configuration value (aka. AFE clock enable)
+#define AD_BITS_AFE_CLK_INT (0b0 << 4)      // AFE_CLK_CTRL AFE clocked internally (default)
+#define AD_BITS_AFE_CLK_EXT (0b1 << 4)      // AFE_CLK_CTRL AFE clocked by CLKIO pin (which can in turn be clocked by ADC)
 
 // AFE_CNTRL2 Register
 #define AD_MASK_AINN_DN100  (0b1 << 15)     // AFE_CNTRL2 N Input open wire detection current enable (-100µA)
@@ -315,9 +315,9 @@ struct ad_regs_adc_t
 #define AD_BITS_MODE_OFFSET_CAL (0b110 << 4)    // ADC_MODE System offset calibration operation mode
 #define AD_BITS_MODE_GAIN_CAL   (0b111 << 4)    // ADC_MODE System gain calibration operation mode
 
-#define AD_BITS_AFE_CLK_INT     (0b00 << 2)     // ADC_MODE AFE Internal clock
-#define AD_BITS_AFE_CLK_INT_IO  (0b01 << 2)     // ADC_MODE AFE Internal clock but connected to CLKIO pin (needed for AFE to operate properly)
-#define AD_BITS_AFE_CLK_EXT     (0b10 << 2)     // ADC_MODE AFE External clock connected to CLKIO piN
+#define AD_BITS_ADC_CLK_INT     (0b00 << 2)     // ADC_MODE ADC Internal clock
+#define AD_BITS_ADC_CLK_INT_IO  (0b01 << 2)     // ADC_MODE ADC Internal clock but connected to CLKIO pin (needed for AFE to operate properly)
+#define AD_BITS_ADC_CLK_EXT     (0b10 << 2)     // ADC_MODE ADC External clock connected to CLKIO piN
 
 // ADC_INTERFACE Register
 #define AD_MASK_DATA_STAT   (0b1 << 6)      // ADC_INTERFACE Append status register to conversion data flag (using this, status register can be read in the same SPI transfer as data to ensure channel information is correct) 
@@ -351,6 +351,7 @@ struct ad_regs_adc_t
 #define AD_MASK_FILT_ORDER  (0b11 << 5)     // FILTER Order setting
 #define AD_MASK_ODR         (0b11111)       // FILTER Output data rate setting
 
+#define AD_BITS_EFILT_UNDEF (0b000 << 8)    // FILTER Enhanced 50/60 Hz filter undefined mode, use as OFF mode
 #define AD_BITS_EFILT_MODE1 (0b010 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 27.27 SPS, settling time = 36.7 ms
 #define AD_BITS_EFILT_MODE2 (0b011 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 25 SPS, settling time = 40 ms
 #define AD_BITS_EFILT_MODE3 (0b100 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 20.67 SPS, settling time = 48.4 ms
@@ -369,9 +370,9 @@ struct ad_regs_adc_t
 #define AD_BITS_ODR_5K      0b01000         // FILTER Output Data Rate (Sinc3 = 5.0 kSPS,       Sinc5+Sinc1 = 4.994 kSPS)
 #define AD_BITS_ODR_2K5     0b01001         // FILTER Output Data Rate (Sinc3 = 2.5 kSPS,       Sinc5+Sinc1 = 2.498 kSPS)
 #define AD_BITS_ODR_1K      0b01010         // FILTER Output Data Rate (Sinc3 = 1.0 kSPS,       Sinc5+Sinc1 = 1.0 kSPS)
-#define AD_BITS_ODR_50      0b01011         // FILTER Output Data Rate (Sinc3 = 500 SPS,        Sinc5+Sinc1 = 500 SPS)
+#define AD_BITS_ODR_500     0b01011         // FILTER Output Data Rate (Sinc3 = 500 SPS,        Sinc5+Sinc1 = 500 SPS)
 #define AD_BITS_ODR_400     0b01100         // FILTER Output Data Rate (Sinc3 = 400.6 SPS,      Sinc5+Sinc1 = 395.5 SPS)
-#define AD_BITS_ODR_20      0b01101         // FILTER Output Data Rate (Sinc3 = 200 SPS,        Sinc5+Sinc1 = 200 SPS)
+#define AD_BITS_ODR_200     0b01101         // FILTER Output Data Rate (Sinc3 = 200 SPS,        Sinc5+Sinc1 = 200 SPS)
 #define AD_BITS_ODR_100     0b01110         // FILTER Output Data Rate (Sinc3 = 100.2 SPS,      Sinc5+Sinc1 = 100.2 SPS)
 #define AD_BITS_ODR_60      0b01111         // FILTER Output Data Rate (Sinc3 = 60 SPS,         Sinc5+Sinc1 = 59.87 SPS)
 #define AD_BITS_ODR_50      0b10000         // FILTER Output Data Rate (Sinc3 = 50 SPS,         Sinc5+Sinc1 = 49.92 SPS)
