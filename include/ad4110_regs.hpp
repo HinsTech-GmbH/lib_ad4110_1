@@ -12,6 +12,23 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
+
+/**
+ * Bit utilities.
+ * 
+ * Macros to simplify bitwise operations on the 
+ * registers.
+ */
+// evaluates to true if any of the bits defined in mask are set in data
+#define AD_TEST_BITS(data, mask) (bool)((data) & (mask))
+// sets the bits defined by "mask" in "data"
+#define AD_SET_BITS(data, mask) (data) |= (mask)
+// resets the bits defined by "mask" in "data"
+#define AD_RESET_BITS(data, mask) (data) &= ~(mask)
+// sets the bits in "data" defined by "mask" to bits in "value" at that mask: AD_WRITE_BITS(0b010101, 0b001100, 0b001000) -> 0b011001 (bits 3:2 were copied to "data" from "value")
+#define AD_WRITE_BITS(data, mask, value) (data) = ((data) & ~(mask)) | ((value) & (mask))
+
 
 /**
  * Register size enumeration.
@@ -183,12 +200,12 @@ struct ad_regs_adc_t
 #define AD_MASK_EXT_R_SEL   (0b1 << 2)      // AFE_CNTRL2 External current sense resistor select (1 = external, 0 = internal)
 #define AD_MASK_IMODE       (0b1 << 1)      // AFE_CNTRL2 Current mode enabled (0 = Voltage mode, 1 = Current mode)
 
-#define AD_BITS_VBIAS_ON50  0b01            // AFE_CNTRL2 Vbias On 50 µA 
-#define AD_BITS_VBIAS_OFF   0b10            // AFE_CNTRL2 Vbias Off value
-#define AD_BITS_RSENSE_EXT  0b1             // AFE_CNTRL2 Sense resistor external
-#define AD_BITS_RSENSE_INT  0b0             // AFE_CNTRL2 Sense resistor internal
-#define AD_BITS_MODE_I      0b1             // AFE_CNTRL2 Current mode
-#define AD_BITS_MODE_V      0b1             // AFE_CNTRL2 Voltage mode
+#define AD_BITS_VBIAS_ON50  (0b01 << 6)     // AFE_CNTRL2 Vbias On 50 µA 
+#define AD_BITS_VBIAS_OFF   (0b10 << 6)     // AFE_CNTRL2 Vbias Off value
+#define AD_BITS_RSENSE_EXT  (0b1 << 2)      // AFE_CNTRL2 Sense resistor external
+#define AD_BITS_RSENSE_INT  (0b0 << 2)      // AFE_CNTRL2 Sense resistor internal
+#define AD_BITS_MODE_I      (0b1 << 1)      // AFE_CNTRL2 Current mode
+#define AD_BITS_MODE_V      (0b1 << 1)      // AFE_CNTRL2 Voltage mode
 
 // PGA_RTD_CTRL Register
 #define AD_MASK_RTD_3W4W    (0b1 << 15)     // PGA_RTD_CTRL Configure for 2/3 Wire (1) or 4 wire (0) RTD mode
@@ -197,34 +214,41 @@ struct ad_regs_adc_t
 #define AD_MASK_EXT_RTD_RES (0b1 << 8)      // PGA_RTD_CTRL External RTD resistor enabled (1 = external, 0 = internal)
 #define AD_MASK_GAIN_CH     (0b1111 << 4)   // PGA_RTD_CTRL Channel gain configuration
 
-#define AD_BITS_RTD_23W         0b1         // PGA_RTD_CTRL RTD 2/3 Wire mode
-#define AD_BITS_RTD_4W          0b0         // PGA_RTD_CTRL RTD 4 Wire mode
-#define AD_BITS_RTD_CURR_OFF    0b000       // PGA_RTD_CTRL Compensation/Excitation current off
-#define AD_BITS_RTD_CURR_100    0b001       // PGA_RTD_CTRL Compensation/Excitation current 100 µA
-#define AD_BITS_RTD_CURR_400    0b010       // PGA_RTD_CTRL Compensation/Excitation current 400 µA
-#define AD_BITS_RTD_CURR_500    0b011       // PGA_RTD_CTRL Compensation/Excitation current 500 µA
-#define AD_BITS_RTD_CURR_600    0b101       // PGA_RTD_CTRL Compensation/Excitation current 600 µA
-#define AD_BITS_RTD_CURR_900    0b110       // PGA_RTD_CTRL Compensation/Excitation current 900 µA
-#define AD_BITS_RTD_CURR_1000   0b111       // PGA_RTD_CTRL Compensation/Excitation current 1000 µA
-#define AD_BITS_RTD_RES_EXT     0b1         // PGA_RTD_CTRL External RTD resistor
-#define AD_BITS_RTD_RES_INT     0b0         // PGA_RTD_CTRL Internal RTD resistor
+#define AD_BITS_RTD_23W     (0b1 << 15)     // PGA_RTD_CTRL RTD 2/3 Wire mode
+#define AD_BITS_RTD_4W      (0b0 << 15)     // PGA_RTD_CTRL RTD 4 Wire mode
+#define AD_BITS_RTD_COM_OFF     (0b000 << 12)   // PGA_RTD_CTRL Compensation current off
+#define AD_BITS_RTD_COM_100     (0b001 << 12)   // PGA_RTD_CTRL Compensation current 100 µA
+#define AD_BITS_RTD_COM_400     (0b010 << 12)   // PGA_RTD_CTRL Compensation current 400 µA
+#define AD_BITS_RTD_COM_500     (0b011 << 12)   // PGA_RTD_CTRL Compensation current 500 µA
+#define AD_BITS_RTD_COM_600     (0b101 << 12)   // PGA_RTD_CTRL Compensation current 600 µA
+#define AD_BITS_RTD_COM_900     (0b110 << 12)   // PGA_RTD_CTRL Compensation current 900 µA
+#define AD_BITS_RTD_COM_1000    (0b111 << 12)   // PGA_RTD_CTRL Compensation current 1000 µA
+#define AD_BITS_RTD_EXC_OFF     (0b000 << 9)    // PGA_RTD_CTRL Excitation current off
+#define AD_BITS_RTD_EXC_100     (0b001 << 9)    // PGA_RTD_CTRL Excitation current 100 µA
+#define AD_BITS_RTD_EXC_400     (0b010 << 9)    // PGA_RTD_CTRL Excitation current 400 µA
+#define AD_BITS_RTD_EXC_500     (0b011 << 9)    // PGA_RTD_CTRL Excitation current 500 µA
+#define AD_BITS_RTD_EXC_600     (0b101 << 9)    // PGA_RTD_CTRL Excitation current 600 µA
+#define AD_BITS_RTD_EXC_900     (0b110 << 9)    // PGA_RTD_CTRL Excitation current 900 µA
+#define AD_BITS_RTD_EXC_1000    (0b111 << 9)    // PGA_RTD_CTRL Excitation current 1000 µA
+#define AD_BITS_RTD_RES_EXT     (0b1 << 8)  // PGA_RTD_CTRL External RTD resistor
+#define AD_BITS_RTD_RES_INT     (0b0 << 8)  // PGA_RTD_CTRL Internal RTD resistor
 
-#define AD_BITS_GAIN_0p2    0b0000          // PPGA_RTD_CTRL Gain selection Gain = 0.2
-#define AD_BITS_GAIN_0p25   0b0001          // PPGA_RTD_CTRL Gain selection Gain = 0.25
-#define AD_BITS_GAIN_0p3    0b0010          // PPGA_RTD_CTRL Gain selection Gain = 0.3
-#define AD_BITS_GAIN_0p375  0b0011          // PPGA_RTD_CTRL Gain selection Gain = 0.375
-#define AD_BITS_GAIN_0p5    0b0100          // PPGA_RTD_CTRL Gain selection Gain = 0.5
-#define AD_BITS_GAIN_0p75   0b0101          // PPGA_RTD_CTRL Gain selection Gain = 0.75
-#define AD_BITS_GAIN_1      0b0110          // PPGA_RTD_CTRL Gain selection Gain = 1
-#define AD_BITS_GAIN_1p5    0b0111          // PPGA_RTD_CTRL Gain selection Gain = 1.5
-#define AD_BITS_GAIN_2      0b1000          // PPGA_RTD_CTRL Gain selection Gain = 2
-#define AD_BITS_GAIN_3      0b1001          // PPGA_RTD_CTRL Gain selection Gain = 3
-#define AD_BITS_GAIN_4      0b1010          // PPGA_RTD_CTRL Gain selection Gain = 4
-#define AD_BITS_GAIN_6      0b1011          // PPGA_RTD_CTRL Gain selection Gain = 6
-#define AD_BITS_GAIN_8      0b1100          // PPGA_RTD_CTRL Gain selection Gain = 8
-#define AD_BITS_GAIN_12     0b1101          // PPGA_RTD_CTRL Gain selection Gain = 12
-#define AD_BITS_GAIN_16     0b1110          // PPGA_RTD_CTRL Gain selection Gain = 16
-#define AD_BITS_GAIN_24     0b1111          // PPGA_RTD_CTRL Gain selection Gain = 24
+#define AD_BITS_GAIN_0p2    (0b0000 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 0.2
+#define AD_BITS_GAIN_0p25   (0b0001 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 0.25
+#define AD_BITS_GAIN_0p3    (0b0010 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 0.3
+#define AD_BITS_GAIN_0p375  (0b0011 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 0.375
+#define AD_BITS_GAIN_0p5    (0b0100 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 0.5
+#define AD_BITS_GAIN_0p75   (0b0101 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 0.75
+#define AD_BITS_GAIN_1      (0b0110 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 1
+#define AD_BITS_GAIN_1p5    (0b0111 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 1.5
+#define AD_BITS_GAIN_2      (0b1000 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 2
+#define AD_BITS_GAIN_3      (0b1001 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 3
+#define AD_BITS_GAIN_4      (0b1010 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 4
+#define AD_BITS_GAIN_6      (0b1011 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 6
+#define AD_BITS_GAIN_8      (0b1100 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 8
+#define AD_BITS_GAIN_12     (0b1101 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 12
+#define AD_BITS_GAIN_16     (0b1110 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 16
+#define AD_BITS_GAIN_24     (0b1111 << 4)   // PPGA_RTD_CTRL Gain selection Gain = 24
 
 // AFE_ERR_DISABLE and AFE_DETAIL_STATUS Register
 #define AD_MASK_AINN_UV     (0b1 << 11)     // AFE_ERR_DISABLE/AFE_DETAIL_STATUS AIN(-) Undervoltage bit
@@ -237,9 +261,6 @@ struct ad_regs_adc_t
 #define AD_MASK_AIN_OC      (0b1 << 1)      // AFE_ERR_DISABLE/AFE_DETAIL_STATUS Input overcurrent
 // AFE_DETAIL_STATUS Register
 #define AD_MASK_ERROR       (0b1)           // AFE_DETAIL_STATUS Error on hight voltage channel bit
-// AFE_ERR_DISABLE values
-#define AD_BITS_ERR_DISABLED    0b1         // AFE_ERR_DISABLE Error disabled value (valid for any of the error disable flags)
-#define AD_BITS_ERR_ENABLED     0b0         // AFE_ERR_DISABLE Error enabled value (valid for any of the error disable flags)
 // AFE_DETAIL_STATUS value note: all fags -> 1 = error, 0 = no error
 
 // AFE_CAL_DATA Register
@@ -266,13 +287,11 @@ struct ad_regs_adc_t
 #define AD_MASK_ADC_CRC_ERR (0b1 << 5)      // ADC_STATUS CRC Error flag while writing ADC register
 #define AD_MASK_CHAN_ID     (0b11)          // ADC_STATUS AFE Channel ID
 
-#define AD_BITS_DATA_READY      0b0         // ADC_STATUS Data ready value
-#define AD_BITS_DATA_WAITING    0b1         // ADC_STATUS Data waiting (not ready) value
-#define AD_CHAN_ID_HV           0b00        // ADC_STATUS 
-#define AD_CHAN_ID_HVD          0b00        // ADC_STATUS ID of channel 0 (high voltage differential channel): AIN(+) − AIN(−).
-#define AD_CHAN_ID_LVD          0b01        // ADC_STATUS ID of channel 1 (low voltage differential channel): AIN1(LV) − AIN2(LV).
-#define AD_CHAN_ID_LV1          0b10        // ADC_STATUS ID of channel 2 (low voltage single-ended channel): AIN1(LV) − AINCOM(LV).
-#define AD_CHAN_ID_LV2          0b11        // ADC_STATUS ID of channel 3 (low voltage single-ended channel): AIN2(LV) − AINCOM(LV).
+#define AD_CHAN_ID_HV       0b00            // ADC_STATUS 
+#define AD_CHAN_ID_HVD      0b00            // ADC_STATUS ID of channel 0 (high voltage differential channel): AIN(+) − AIN(−).
+#define AD_CHAN_ID_LVD      0b01            // ADC_STATUS ID of channel 1 (low voltage differential channel): AIN1(LV) − AIN2(LV).
+#define AD_CHAN_ID_LV1      0b10            // ADC_STATUS ID of channel 2 (low voltage single-ended channel): AIN1(LV) − AINCOM(LV).
+#define AD_CHAN_ID_LV2      0b11            // ADC_STATUS ID of channel 3 (low voltage single-ended channel): AIN2(LV) − AINCOM(LV).
 
 // ADC_MODE Register
 #define AD_MASK_REF_EN      (0b1 << 15)     // ADC_MODE Internal voltage reference enable flag
@@ -280,34 +299,34 @@ struct ad_regs_adc_t
 #define AD_MASK_CONV_MODE   (0b111 << 4)    // ADC_MODE Conversion mode config
 #define AD_MASK_ADC_CLK_SEL (0b11 << 2)     // ADC_MODE ADC Clock source select
 
-#define AD_BITS_DELAY_Off   0b000           // ADC_MODE Conversion delay Off (no delay)
-#define AD_BITS_DELAY_1     0b001           // ADC_MODE Conversion delay 1 cycle (8 µs)
-#define AD_BITS_DELAY_4     0b010           // ADC_MODE Conversion delay 4 cycles (32 µs)
-#define AD_BITS_DELAY_10    0b011           // ADC_MODE Conversion delay 10 cycles (40 µs)
-#define AD_BITS_DELAY_25    0b100           // ADC_MODE Conversion delay 25 cycles (200 µs)
-#define AD_BITS_DELAY_50    0b101           // ADC_MODE Conversion delay 50 cycles (400 µs)
-#define AD_BITS_DELAY_125   0b110           // ADC_MODE Conversion delay 125 cycles (1000 µs)
-#define AD_BITS_DELAY_250   0b111           // ADC_MODE Conversion delay 250 cycles (2000 µs)
+#define AD_BITS_DELAY_Off   (0b000 << 8)    // ADC_MODE Conversion delay Off (no delay)
+#define AD_BITS_DELAY_1     (0b001 << 8)    // ADC_MODE Conversion delay 1 cycle (8 µs)
+#define AD_BITS_DELAY_4     (0b010 << 8)    // ADC_MODE Conversion delay 4 cycles (32 µs)
+#define AD_BITS_DELAY_10    (0b011 << 8)    // ADC_MODE Conversion delay 10 cycles (40 µs)
+#define AD_BITS_DELAY_25    (0b100 << 8)    // ADC_MODE Conversion delay 25 cycles (200 µs)
+#define AD_BITS_DELAY_50    (0b101 << 8)    // ADC_MODE Conversion delay 50 cycles (400 µs)
+#define AD_BITS_DELAY_125   (0b110 << 8)    // ADC_MODE Conversion delay 125 cycles (1000 µs)
+#define AD_BITS_DELAY_250   (0b111 << 8)    // ADC_MODE Conversion delay 250 cycles (2000 µs)
 
-#define AD_BITS_MODE_CONT       0b000       // ADC_MODE Continuous conversion operation mode
-#define AD_BITS_MODE_SINGLE     0b001       // ADC_MODE Single conversion operation mode 
-#define AD_BITS_MODE_STANDBY    0b010       // ADC_MODE Standby operation mode
-#define AD_BITS_MODE_POWERDOWN  0b011       // ADC_MODE Power-down operation mode
-#define AD_BITS_MODE_OFFSET_CAL 0b110       // ADC_MODE System offset calibration operation mode
-#define AD_BITS_MODE_GAIN_CAL   0b111       // ADC_MODE System gain calibration operation mode
+#define AD_BITS_MODE_CONT       (0b000 << 4)    // ADC_MODE Continuous conversion operation mode
+#define AD_BITS_MODE_SINGLE     (0b001 << 4)    // ADC_MODE Single conversion operation mode 
+#define AD_BITS_MODE_STANDBY    (0b010 << 4)    // ADC_MODE Standby operation mode
+#define AD_BITS_MODE_POWERDOWN  (0b011 << 4)    // ADC_MODE Power-down operation mode
+#define AD_BITS_MODE_OFFSET_CAL (0b110 << 4)    // ADC_MODE System offset calibration operation mode
+#define AD_BITS_MODE_GAIN_CAL   (0b111 << 4)    // ADC_MODE System gain calibration operation mode
 
-#define AD_BITS_AFE_CLK_INT     0b00        // ADC_MODE AFE Internal clock
-#define AD_BITS_AFE_CLK_INT_IO  0b01        // ADC_MODE AFE Internal clock but connected to CLKIO pin (needed for AFE to operate properly)
-#define AD_BITS_AFE_CLK_EXT     0b10        // ADC_MODE AFE External clock connected to CLKIO piN
+#define AD_BITS_AFE_CLK_INT     (0b00 << 2)     // ADC_MODE AFE Internal clock
+#define AD_BITS_AFE_CLK_INT_IO  (0b01 << 2)     // ADC_MODE AFE Internal clock but connected to CLKIO pin (needed for AFE to operate properly)
+#define AD_BITS_AFE_CLK_EXT     (0b10 << 2)     // ADC_MODE AFE External clock connected to CLKIO piN
 
 // ADC_INTERFACE Register
 #define AD_MASK_DATA_STAT   (0b1 << 6)      // ADC_INTERFACE Append status register to conversion data flag (using this, status register can be read in the same SPI transfer as data to ensure channel information is correct) 
 #define AD_MASK_ADC_CRC_CFG (0b11 << 2)     // ADC_INTERFACE CRC configuration for ADC register read/write (unlike AFE CRC config, this has one additional setting)
 #define AD_MASK_WL16        (0b1)           // ADC_INTERFACE Flag to use 16 Bit ADC data word length instead of 24 bits (reduces data register size to 16 bits)
 
-#define AD_BITS_ADC_CRC_OFF 0b00            // ADC_INTERFACE CRC off configuration (not CRC on ADC register access)
-#define AD_BITS_ADC_CRC_XOR 0b01            // ADC_INTERFACE XOR checksum on ADC register reads, CRC on ADC register writes
-#define AD_BITS_ADC_CRC_ON  0b10            // ADC_INTERFACE CRC on ADC register reads and writes
+#define AD_BITS_ADC_CRC_OFF (0b00 << 2)     // ADC_INTERFACE CRC off configuration (not CRC on ADC register access)
+#define AD_BITS_ADC_CRC_XOR (0b01 << 2)     // ADC_INTERFACE XOR checksum on ADC register reads, CRC on ADC register writes
+#define AD_BITS_ADC_CRC_ON  (0b10 << 2)     // ADC_INTERFACE CRC on ADC register reads and writes
 
 // ADC_CONFIG Register
 #define AD_MASK_BIPOLAR     (0b1 << 12)     // ADC_CONFIG Use bipolar coding
@@ -322,9 +341,9 @@ struct ad_regs_adc_t
 #define AD_MASK_CHAN_EN_1   (0b1 << 1)      // ADC_CONFIG Channel 1 enable (low voltage differential channel: AIN1(LV) − AIN2(LV))
 #define AD_MASK_CHAN_EN_0   (0b1)           // ADC_CONFIG Channel 0 enable (high voltage differential channel: AIN(+) − AIN(−))
 
-#define AD_BITS_REF_EXT     0b00            // ADC_CONFIG External voltage reference connected to REFIN(+) and REFIN(-)
-#define AD_BITS_REF_INT     0b10            // ADC_CONFIG Internal voltage reference
-#define AD_BITS_REF_AVDD5   0b11            // ADC_CONFIG Use AVDD5 and AGND as voltage reference
+#define AD_BITS_REF_EXT     (0b00 << 4)     // ADC_CONFIG External voltage reference connected to REFIN(+) and REFIN(-)
+#define AD_BITS_REF_INT     (0b10 << 4)     // ADC_CONFIG Internal voltage reference
+#define AD_BITS_REF_AVDD5   (0b11 << 4)     // ADC_CONFIG Use AVDD5 and AGND as voltage reference
 
 // FILTER Register
 #define AD_MASK_EFILT_EN    (0b1 << 11)     // FILTER enhanced 50/60 Hz Filter enable
@@ -332,13 +351,14 @@ struct ad_regs_adc_t
 #define AD_MASK_FILT_ORDER  (0b11 << 5)     // FILTER Order setting
 #define AD_MASK_ODR         (0b11111)       // FILTER Output data rate setting
 
-#define AD_BITS_EFILT_MODE1 0b010           // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 27.27 SPS, settling time = 36.7 ms
-#define AD_BITS_EFILT_MODE2 0b011           // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 25 SPS, settling time = 40 ms
-#define AD_BITS_EFILT_MODE3 0b100           // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 20.67 SPS, settling time = 48.4 ms
-#define AD_BITS_EFILT_MODE4 0b101           // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 20 SPS, settling time = 50 ms
-#define AD_BITS_EFILT_MODE5 0b110           // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 16.67 SPS, settling time = 60 ms
-#define AD_BITS_ORD_SINC51  0b00            // FILTER Order Sinc5 + Sinc1 (fast settling filter)
-#define AD_BITS_ORD_SINC3   0b00            // FILTER Order Sinc3
+#define AD_BITS_EFILT_MODE1 (0b010 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 27.27 SPS, settling time = 36.7 ms
+#define AD_BITS_EFILT_MODE2 (0b011 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 25 SPS, settling time = 40 ms
+#define AD_BITS_EFILT_MODE3 (0b100 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 20.67 SPS, settling time = 48.4 ms
+#define AD_BITS_EFILT_MODE4 (0b101 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 20 SPS, settling time = 50 ms
+#define AD_BITS_EFILT_MODE5 (0b110 << 8)    // FILTER Enhanced 50/60 Hz filter mode with Output Data Rate ODR = 16.67 SPS, settling time = 60 ms
+
+#define AD_BITS_ORD_SINC51  (0b00 << 5)     // FILTER Order Sinc5 + Sinc1 (fast settling filter)
+#define AD_BITS_ORD_SINC3   (0b11 << 5)     // FILTER Order Sinc3
 
 #define AD_BITS_ODR_125K    0b00000         // FILTER Output Data Rate (Sinc3 = 125.0 kSPS,     Sinc5+Sinc1 = 125.0 kSPS)
 #define AD_BITS_ODR_62K5    0b00010         // FILTER Output Data Rate (Sinc3 = 62.5 kSPS,      Sinc5+Sinc1 = 62.5 kSPS)
@@ -364,6 +384,6 @@ struct ad_regs_adc_t
 #define AD_MASK_SYNC_PIN_EN (0b1 << 11)     // ADC_GPIO_CONFIG Sync pin enable
 #define AD_MASK_ERR_PIN_EN  (0b11 << 9)     // ADC_GPIO_CONFIG Error pin mode select
 
-#define AD_BITS_ERR_PIN_OFF 0b00            // ADC_GPIO_CONFIG Error pin disabled mode
-#define AD_BITS_ERR_PIN_IN  0b01            // ADC_GPIO_CONFIG Error pin input mode (see datasheet for details)
-#define AD_BITS_ERR_PIN_OUT 0b10            // ADC_GPIO_CONFIG Error pin output mode (open drain, low on any non-masked error)
+#define AD_BITS_ERR_PIN_OFF (0b00 << 9)     // ADC_GPIO_CONFIG Error pin disabled mode
+#define AD_BITS_ERR_PIN_IN  (0b01 << 9)     // ADC_GPIO_CONFIG Error pin input mode (see datasheet for details)
+#define AD_BITS_ERR_PIN_OUT (0b10 << 9)     // ADC_GPIO_CONFIG Error pin output mode (open drain, low on any non-masked error)
