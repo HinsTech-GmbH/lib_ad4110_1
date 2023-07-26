@@ -22,10 +22,10 @@
  */
 // evaluates to true if any of the bits defined in mask are set in data
 #define AD_TEST_BITS(data, mask) (bool)((data) & (mask))
-// sets the bits defined by "mask" in "data"
+// sets the bits defined by "mask" in "data" (aka. sets them to 1)
 #define AD_SET_BITS(data, mask) (data) |= (mask)
-// resets the bits defined by "mask" in "data"
-#define AD_RESET_BITS(data, mask) (data) &= ~(mask)
+// clears the bits defined by "mask" in "data" (aka. sets them to 0)
+#define AD_CLEAR_BITS(data, mask) (data) &= ~(mask)
 // sets the bits in "data" defined by "mask" to bits in "value" at that mask: AD_WRITE_BITS(0b010101, 0b001100, 0b001000) -> 0b011001 (bits 3:2 were copied to "data" from "value")
 #define AD_WRITE_BITS(data, mask, value) (data) = ((data) & ~(mask)) | ((value) & (mask))
 
