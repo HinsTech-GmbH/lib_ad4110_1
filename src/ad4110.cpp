@@ -13,8 +13,15 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "ad4110.hpp"
+
+
+#define AD_EVG_IT_READY         (0b1 << 0)
+#define AD_EVG_IT_SPI_TX_DONE   (0b1 << 1)
+#define AD_EVG_IT_SPI_RX_DONE   (0b1 << 2)
+
 
 AD4110::AD4110(
     SPI_HandleTypeDef &_hspi,
@@ -187,6 +194,9 @@ void AD4110::initialize()
     sem_spi_guard = xSemaphoreCreateBinaryStatic(&sem_buffer_spi_guard);
     configASSERT(sem_spi_guard);
     xSemaphoreGive(sem_spi_guard);
+
+    event_group = xEventGroupCreateStatic(&event_group_buffer);
+    configASSERT(event_group);
 }
 
 el::retcode AD4110::reset()
@@ -302,15 +312,40 @@ el::retcode AD4110::setup()
 
 el::retcode AD4110::updateStatus()
 {
+    if (adc_data_transaction_in_progress)
+        return el::retcode::busy;
+    
     EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_ADC_STATUS,        AD_ADC_REG_SIZE_ADC_STATUS,         &adc_regs.adc_status));
     return el::retcode::ok;
 }
 
+static int counter = 0;
+
 el::retcode AD4110::readData(uint32_t *_output)
 {
-    // wait for ready to be come low
+    if (adc_data_transaction_in_progress)
+        return el::retcode::busy;
+    adc_data_transaction_in_progress = true;
+    counter = 0;
+
+    // enable chip and wait for ready to become low
     cs_pin.write(0);
-    while (ready_pin.read());
+    ready_pin.enableInterrupt();
+    auto bits = xEventGroupWaitBits(
+        event_group,
+        AD_EVG_IT_READY,
+        pdTRUE,
+        pdFALSE,
+        timeout_ticks
+    );
+
+    if (!bits)
+    {
+        adc_data_transaction_in_progress = false;
+        return el::retcode::timeout;
+    }
+
+    // ready interrupt received, start reading data
 
     // if DATA_STAT bit is set, the ADC_STATUS register is appended to the data register,
     // making it one byte longer and requiring the two to be split up
@@ -327,5 +362,27 @@ el::retcode AD4110::readData(uint32_t *_output)
     }
 
     *_output = adc_regs.data;
+    printf("Counter: %d", counter);
+
+    adc_data_transaction_in_progress = false;
     return el::retcode::ok;
+}
+
+void AD4110::readyInterruptHandler()
+{
+    BaseType_t higher_priority_task_woken, result;
+
+    // disable any further interrupts
+    ready_pin.disableInterrupt();
+    counter++;
+
+    // notify blocking task
+    result = xEventGroupSetBitsFromISR(
+        event_group,
+        AD_EVG_IT_READY,
+        &higher_priority_task_woken
+    );
+
+    if (result != pdFAIL)
+        portYIELD_FROM_ISR(higher_priority_task_woken);
 }

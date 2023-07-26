@@ -16,6 +16,7 @@
 #include <el/retcode.hpp>
 #include <FreeRTOS.h>
 #include <semphr.h>
+#include <event_groups.h>
 
 #include "ad4110_regs.hpp"
 
@@ -49,8 +50,18 @@ private:    // data
     StaticSemaphore_t sem_buffer_spi_guard;
     SemaphoreHandle_t sem_spi_guard = nullptr;
 
+    // event group used for handling interrupts and state changes internally
+    StaticEventGroup_t event_group_buffer;
+    EventGroupHandle_t event_group;
+
+    // flag specifying that a non-blocking ADC data read operation using an interrupt
+    // is currently in progress
+    bool adc_data_transaction_in_progress = false;
+
+
     // global timeout for any operation
     TickType_t timeout_ticks;
+
 
 public:     // data
     ad_regs_afe_t afe_regs;
@@ -150,7 +161,25 @@ public:
 
     el::retcode updateStatus();
 
+    /**
+     * @brief waits for the next ADC sample to become ready for reading and 
+     * reads it. The waiting task is performed CPU-saving using interrupts
+     * and FreeRTOS event groups. Other tasks can run while waiting for 
+     * the ADC to become ready for read.
+     * 
+     * @param _output [out] data received from ADC.
+     * @return el::retcode 
+     * @retval see readRegister()
+     * @retval busy - can also mean a read is already happening in the background
+     * @retval timeout - can also mean that ready signal was never received
+     */
     el::retcode readData(uint32_t *_output);
+
+    /**
+     * @brief method to be called in the ISR of the ready pin
+     * (when the ready pin goes low)
+     */
+    void readyInterruptHandler();
 
 
     /**
