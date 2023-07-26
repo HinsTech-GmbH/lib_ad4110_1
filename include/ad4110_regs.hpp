@@ -40,6 +40,7 @@ enum ad_reg_size_t
     AD_REG_8 = 1,
     AD_REG_16 = 2,
     AD_REG_24 = 3,
+    AD_REG_32 = 4
 };
 
 /**

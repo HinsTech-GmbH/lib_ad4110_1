@@ -20,11 +20,13 @@ AD4110::AD4110(
     SPI_HandleTypeDef &_hspi,
     uint8_t _addr,
     uc::Pin &_cs_pin,
+    uc::Pin &_ready_pin,
     TickType_t _timeout
 ) :
     hspi(_hspi),
     address(_addr),
     cs_pin(_cs_pin),
+    ready_pin(_ready_pin),
     timeout_ticks(_timeout)
 {}
 
@@ -114,7 +116,7 @@ cleanup:
 
 el::retcode AD4110::writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _data)
 {
-    // prepare data
+    // prepare command and data
     uint8_t data_len = _size + 1;   // +1 byte for command
     spi_write_buffer[0] = AD_WRITE | AD_ADDR(address) | _reg;
     if (_size == AD_REG_8)
@@ -132,6 +134,13 @@ el::retcode AD4110::writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _d
         spi_write_buffer[2] = (uint8_t)(_data >> 8 & 0xff);
         spi_write_buffer[3] = (uint8_t)(_data & 0xff);
     }
+    else if (_size == AD_REG_32)
+    {
+        spi_write_buffer[1] = (uint8_t)(_data >> 24 & 0xff);
+        spi_write_buffer[2] = (uint8_t)(_data >> 16 & 0xff);
+        spi_write_buffer[3] = (uint8_t)(_data >> 8 & 0xff);
+        spi_write_buffer[4] = (uint8_t)(_data & 0xff);
+    }
     else
         return el::retcode::invalid;
 
@@ -146,6 +155,7 @@ el::retcode AD4110::readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_d
     spi_write_buffer[1] = 0;
     spi_write_buffer[2] = 0;
     spi_write_buffer[3] = 0;
+    spi_write_buffer[4] = 0;
 
     el::retcode retval = xmitBytes(data_len);
 
@@ -161,6 +171,10 @@ el::retcode AD4110::readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_d
     else if (_size == AD_REG_24)
     {
         *_data = spi_read_buffer[1] << 16 | spi_read_buffer[2] << 8 | spi_read_buffer[3];
+    }
+    else if (_size == AD_REG_32)
+    {
+        *_data = spi_read_buffer[1] << 24 | spi_read_buffer[2] << 16 | spi_read_buffer[3] << 8 | spi_read_buffer[4];
     }
     else
         return el::retcode::invalid;
@@ -259,6 +273,17 @@ el::retcode AD4110::setup()
     AD_CLEAR_BITS(adc_regs.adc_gpio_config, AD_MASK_SYNC_PIN_EN);
     EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_ADC_GPIO_CONFIG, AD_ADC_REG_SIZE_ADC_GPIO_CONFIG, adc_regs.adc_gpio_config));
     
+    // enable appending status register to data register for combined reading
+    AD_SET_BITS(adc_regs.adc_interface, AD_MASK_DATA_STAT);
+    EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_ADC_INTERFACE, AD_ADC_REG_SIZE_ADC_INTERFACE, adc_regs.adc_interface));
+
+    //configure the filter
+    AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, AD_BITS_ODR_60);
+    AD_WRITE_BITS(adc_regs.filter, AD_MASK_FILT_ORDER, AD_BITS_ORD_SINC51);
+    AD_WRITE_BITS(adc_regs.filter, AD_MASK_EFILT_SEL, AD_BITS_EFILT_UNDEF);
+    AD_CLEAR_BITS(adc_regs.filter, AD_MASK_EFILT_EN);
+    EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_FILTER, AD_ADC_REG_SIZE_FILTER, adc_regs.filter));
+
     // enable bias voltage
     AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, AD_BITS_VBIAS_ON50);
     // enable voltage mode regardless of startup value
@@ -270,12 +295,7 @@ el::retcode AD4110::setup()
     AD_CLEAR_BITS(adc_regs.adc_config, AD_MASK_BIT_6);
     EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_ADC_CONFIG, AD_ADC_REG_SIZE_ADC_CONFIG, adc_regs.adc_config));
 
-    //configure the filter
-    AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, AD_BITS_ODR_60);
-    AD_WRITE_BITS(adc_regs.filter, AD_MASK_FILT_ORDER, AD_BITS_ORD_SINC51);
-    AD_WRITE_BITS(adc_regs.filter, AD_MASK_EFILT_SEL, AD_BITS_EFILT_UNDEF);
-    AD_CLEAR_BITS(adc_regs.filter, AD_MASK_EFILT_EN);
-    EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_FILTER, AD_ADC_REG_SIZE_FILTER, adc_regs.filter));
+   
 
     return el::retcode::ok;
 }
@@ -288,9 +308,24 @@ el::retcode AD4110::updateStatus()
 
 el::retcode AD4110::readData(uint32_t *_output)
 {
+    // wait for ready to be come low
     cs_pin.write(0);
-    HAL_Delay(5);
-    EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, AD_ADC_REG_SIZE_DATA, &adc_regs.data));
+    while (ready_pin.read());
+
+    // if DATA_STAT bit is set, the ADC_STATUS register is appended to the data register,
+    // making it one byte longer and requiring the two to be split up
+    if (AD_TEST_BITS(adc_regs.adc_interface, AD_MASK_DATA_STAT))
+    {
+        EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, (ad_reg_size_t)(AD_ADC_REG_SIZE_DATA + AD_ADC_REG_SIZE_ADC_STATUS), &adc_regs.data));
+        adc_regs.adc_status = adc_regs.data & 0xff; // lowest byte contains status reg
+        adc_regs.data >>= 8;                        // throw out the status reg from the data
+    }
+    // Otherwise, the data register can just be read like normal
+    else
+    {
+        EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, AD_ADC_REG_SIZE_DATA, &adc_regs.data));
+    }
+
     *_output = adc_regs.data;
     return el::retcode::ok;
 }

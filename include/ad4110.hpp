@@ -38,6 +38,8 @@ private:    // data
     uint8_t address;
     // The CS pin the AD4110-1 is connected to (can be shared with multiple AD4110-1 if they have different pins)
     uc::Pin &cs_pin;
+    // The !READY pin of the AD4110-1 used for reading ADC data correctly
+    uc::Pin &ready_pin;
 
     // SPI communication buffers
     uint8_t spi_write_buffer[AD_SPI_BUFFER_SIZE];
@@ -103,6 +105,7 @@ public:
         SPI_HandleTypeDef &_hspi,
         uint8_t _addr,
         uc::Pin &_cs_pin,
+        uc::Pin &_ready_pin,
         TickType_t _timeout = 1000
     );
 
