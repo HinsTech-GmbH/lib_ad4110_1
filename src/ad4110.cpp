@@ -189,11 +189,77 @@ el::retcode AD4110::readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_d
     return retval;
 }
 
+el::retcode AD4110::getChipAccess()
+{
+    switch (comm_state)
+    {
+    // on IDLE an single read we just wait until we get access (instantly on idle, a few ms on single read)
+    case comm_state_t::IDLE:
+    case comm_state_t::SINGLE_READ_ACTIVE:
+        if (!xSemaphoreTake(sem_device_guard, timeout_ticks));
+            return el::retcode::nolock;
+        return el::retcode::ok;
+        break;
+
+    // in continuous read mode we ask for the read to be paused and then take ownership.
+    case comm_state_t::STREAM_READ_ACTIVE:
+        if (stream_paused)
+        {
+            // if the continuous read operation is already paused, another task (or possibly even the same one)
+            // as already acquired access. This should not happen and will cause errors.
+            return el::retcode::err;
+        }
+        // ask stream reader for access
+        stream_pause_enquiry = true;
+        if (!xSemaphoreTake(sem_device_guard, timeout_ticks));
+        {
+            stream_pause_enquiry = false;
+            return el::retcode::nolock;
+        }
+        return el::retcode::ok;
+        break;
+    
+    // invalid state
+    default:
+        el::retcode::invalid;
+        break;
+    }
+}
+
+el::retcode AD4110::giveChipAccess()
+{
+    switch (comm_state)
+    {
+    // on everything but paused we just give back access
+    case comm_state_t::IDLE:
+    case comm_state_t::SINGLE_READ_ACTIVE:
+    case comm_state_t::STREAM_READ_ACTIVE:
+        if (!xSemaphoreGive(sem_device_guard));
+            return el::retcode::nolock;
+        // if the stream was paused, we resume it
+        if (stream_paused)
+        {
+            // TODO: implement stream feature and therefore stream resuming
+        }
+        return el::retcode::ok;
+        break;
+    
+    // invalid state
+    default:
+        el::retcode::invalid;
+        break;
+    }
+}
+
 void AD4110::initialize()
 {
     sem_spi_guard = xSemaphoreCreateBinaryStatic(&sem_buffer_spi_guard);
     configASSERT(sem_spi_guard);
     xSemaphoreGive(sem_spi_guard);
+
+    sem_device_guard = xSemaphoreCreateBinaryStatic(&sem_buffer_device_guard);
+    configASSERT(sem_device_guard);
+    xSemaphoreGive(sem_device_guard);
 
     event_group = xEventGroupCreateStatic(&event_group_buffer);
     configASSERT(event_group);
@@ -288,7 +354,7 @@ el::retcode AD4110::setup()
     EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_ADC_INTERFACE, AD_ADC_REG_SIZE_ADC_INTERFACE, adc_regs.adc_interface));
 
     //configure the filter
-    AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, AD_BITS_ODR_60);
+    AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, AD_BITS_ODR_100);
     AD_WRITE_BITS(adc_regs.filter, AD_MASK_FILT_ORDER, AD_BITS_ORD_SINC51);
     AD_WRITE_BITS(adc_regs.filter, AD_MASK_EFILT_SEL, AD_BITS_EFILT_UNDEF);
     AD_CLEAR_BITS(adc_regs.filter, AD_MASK_EFILT_EN);
@@ -311,10 +377,7 @@ el::retcode AD4110::setup()
 }
 
 el::retcode AD4110::updateStatus()
-{
-    if (adc_data_transaction_in_progress)
-        return el::retcode::busy;
-    
+{   
     EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_ADC_STATUS,        AD_ADC_REG_SIZE_ADC_STATUS,         &adc_regs.adc_status));
     return el::retcode::ok;
 }
@@ -322,9 +385,10 @@ el::retcode AD4110::updateStatus()
 
 el::retcode AD4110::readData(uint32_t *_output)
 {
-    if (adc_data_transaction_in_progress)
+    if (comm_state != comm_state_t::IDLE)
         return el::retcode::busy;
-    adc_data_transaction_in_progress = true;
+
+    comm_state = comm_state_t::SINGLE_READ_ACTIVE;
 
     // enable chip and wait for ready to become low
     ready_pin.clearPendingInterrupt();
@@ -338,16 +402,14 @@ el::retcode AD4110::readData(uint32_t *_output)
         timeout_ticks
     );
 
+    ready_pin.disableInterrupt();
+
     if (!bits)
     {
         cs_pin.write(1);
-        adc_data_transaction_in_progress = false;
+        comm_state = comm_state_t::IDLE;
         return el::retcode::timeout;
     }
-
-    //while (ready_pin.read());
-
-    ready_pin.disableInterrupt();
 
     // ready interrupt received, start reading data
 
@@ -368,7 +430,8 @@ el::retcode AD4110::readData(uint32_t *_output)
 
     *_output = adc_regs.data;
 
-    adc_data_transaction_in_progress = false;
+    cs_pin.write(1);    // should already be the case but just to make sure
+    comm_state = comm_state_t::IDLE;
     return el::retcode::ok;
 }
 

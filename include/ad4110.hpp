@@ -30,6 +30,26 @@
 #define AD_SPI_BUFFER_SIZE 8
 
 
+class AD4110;
+
+class ADScopedAccess
+{
+    AD4110 &ad;
+
+public:
+    ADScopedAccess(AD4110 &_ad)
+        : ad(_ad)
+    {
+        ad.getChipAccess();
+    }
+
+    ~ADScopedAccess()
+    {
+        ad.giveChipAccess();
+    }
+    
+};
+
 class AD4110
 {
 private:    // data
@@ -54,10 +74,24 @@ private:    // data
     StaticEventGroup_t event_group_buffer;
     EventGroupHandle_t event_group;
 
-    // flag specifying that a non-blocking ADC data read operation using an interrupt
-    // is currently in progress
-    bool adc_data_transaction_in_progress = false;
+    // enumeration used to store the current state of non-blocking
+    // communication for reading ADC data register
+    enum class comm_state_t
+    {
+        IDLE,                   // the controller is idle, no data reading active
+        SINGLE_READ_ACTIVE,     // the controller is currently doing a single read (and will be done after that)
+        STREAM_READ_ACTIVE,     // the controller is currently doing a continuous read and will need to be stopped/paused to access the SPI interface
+    } comm_state;
 
+    // a continuous read is currently paused for the program to access the SPI interface
+    bool stream_paused = false;
+
+    // a flag set by getChipAccess to tell the stream processor to pause continuous reading and temporarily give up access.
+    bool stream_pause_enquiry = false;
+
+    // semaphore go guard device access (especially in combination with non-blocking background data streaming)
+    StaticSemaphore_t sem_buffer_device_guard;
+    SemaphoreHandle_t sem_device_guard = nullptr;
 
     // global timeout for any operation
     TickType_t timeout_ticks;
@@ -100,6 +134,60 @@ private:    // methods
      */
     el::retcode xmitBytes(uint8_t _size);
 
+    /**
+     * @brief writes to a register of the AD4110-1. It simply sends the write command and then
+     * the data.
+     * 
+     * @param _reg register definition
+     * @param _size size of data to be written. use enumerations.
+     * @param _data data to be written. Only the amount of bytes defined by the data size is
+     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
+     * the three lowest bytes. The highest byte is always ignored.)
+     * 
+     * @return el::retcode 
+     * @retval ok - write successful
+     * @retval busy - SPI already busy
+     * @retval err - some other SPI error or invalid parameter
+     * @retval nolock - SPI guard semaphore timeout
+     * @retval invalid - invalid size
+     */
+    el::retcode writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _data);
+
+    /**
+     * @brief reads to a register from the AD4110-1. It simply sends the read command and then
+     * reads
+     * 
+     * @param _reg register definition
+     * @param _size size of data to be written. use enumerations.
+     * @param _data [out] data to be written. Only the amount of bytes defined by the data size is
+     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
+     * the three lowest bytes. The highest byte is always ignored.)
+     * 
+     * @return el::retcode 
+     * @retval ok - write successful
+     * @retval busy - SPI already busy
+     * @retval err - some other SPI error or invalid parameter
+     * @retval nolock - SPI guard semaphore timeout
+     * @retval invalid - invalid size
+     */
+    el::retcode readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_data);
+
+    /**
+     * @brief pauses any possible background data fetching
+     * the chip and makes sure no other task apart from the calling one
+     * can access the chip until giveChipAccess is called using a semaphore.
+     */
+    el::retcode getChipAccess();
+    
+    /**
+     * @brief gives access to the chip await from the calling task
+     * allowing others to access it and resumes any background data
+     * fetching if it was paused by getChipAccess() before.
+     */
+    el::retcode giveChipAccess();
+
+    // friend declaration so ADScopedAccess can call the above two methods
+    friend class ADScopedAccess;
 
 
 public:
@@ -141,10 +229,19 @@ public:
      * and returns the error code.
      * 
      * @return el::retcode 
-     * @retval see writeRegister()
+     * @retval see readRegister()
      */
     el::retcode loadAllRegisters();
 
+    /**
+     * @brief writes every writable register from the local cache to the chip.
+     * This can be used to change a bunch of values at once and then quickly 
+     * and easily flush them to the chip.
+     * This method aborts as soon as one write fails
+     * 
+     * @return el::retcode 
+     * @retval see writeRegister();
+     */
     el::retcode writeAllRegisters();
 
     /**
@@ -159,6 +256,13 @@ public:
      */
     el::retcode setup();
 
+    /**
+     * @brief reads the status registers from the chip and aborts
+     * as soon as one read fails.
+     * 
+     * @return el::retcode 
+     * @retval see readRegister()
+     */
     el::retcode updateStatus();
 
     /**
@@ -182,42 +286,6 @@ public:
     void readyInterruptHandler();
 
 
-    /**
-     * @brief writes to a register of the AD4110-1. It simply sends the write command and then
-     * the data.
-     * 
-     * @param _reg register definition
-     * @param _size size of data to be written. use enumerations.
-     * @param _data data to be written. Only the amount of bytes defined by the data size is
-     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
-     * the three lowest bytes. The highest byte is always ignored.)
-     * 
-     * @return el::retcode 
-     * @retval ok - write successful
-     * @retval busy - SPI already busy
-     * @retval err - some other SPI error or invalid parameter
-     * @retval nolock - SPI guard semaphore timeout
-     * @retval invalid - invalid size
-     */
-    el::retcode writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _data);
-
-    /**
-     * @brief reads to a register from the AD4110-1. It simply sends the read command and then
-     * reads
-     * 
-     * @param _reg register definition
-     * @param _size size of data to be written. use enumerations.
-     * @param _data [out] data to be written. Only the amount of bytes defined by the data size is
-     * written, right aligned (size 8 writes the lowest byte, 16 the two lowest bytes and 24
-     * the three lowest bytes. The highest byte is always ignored.)
-     * 
-     * @return el::retcode 
-     * @retval ok - write successful
-     * @retval busy - SPI already busy
-     * @retval err - some other SPI error or invalid parameter
-     * @retval nolock - SPI guard semaphore timeout
-     * @retval invalid - invalid size
-     */
-    el::retcode readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_data);
+   
 
 };
