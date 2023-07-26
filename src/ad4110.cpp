@@ -319,18 +319,17 @@ el::retcode AD4110::updateStatus()
     return el::retcode::ok;
 }
 
-static int counter = 0;
 
 el::retcode AD4110::readData(uint32_t *_output)
 {
     if (adc_data_transaction_in_progress)
         return el::retcode::busy;
     adc_data_transaction_in_progress = true;
-    counter = 0;
 
     // enable chip and wait for ready to become low
-    cs_pin.write(0);
+    ready_pin.clearPendingInterrupt();
     ready_pin.enableInterrupt();
+    cs_pin.write(0);
     auto bits = xEventGroupWaitBits(
         event_group,
         AD_EVG_IT_READY,
@@ -341,9 +340,14 @@ el::retcode AD4110::readData(uint32_t *_output)
 
     if (!bits)
     {
+        cs_pin.write(1);
         adc_data_transaction_in_progress = false;
         return el::retcode::timeout;
     }
+
+    //while (ready_pin.read());
+
+    ready_pin.disableInterrupt();
 
     // ready interrupt received, start reading data
 
@@ -361,8 +365,8 @@ el::retcode AD4110::readData(uint32_t *_output)
         EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, AD_ADC_REG_SIZE_DATA, &adc_regs.data));
     }
 
+
     *_output = adc_regs.data;
-    printf("Counter: %d", counter);
 
     adc_data_transaction_in_progress = false;
     return el::retcode::ok;
@@ -373,8 +377,7 @@ void AD4110::readyInterruptHandler()
     BaseType_t higher_priority_task_woken, result;
 
     // disable any further interrupts
-    ready_pin.disableInterrupt();
-    counter++;
+    //ready_pin.disableInterrupt();
 
     // notify blocking task
     result = xEventGroupSetBitsFromISR(
