@@ -354,7 +354,7 @@ el::retcode AD4110::setup()
     EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_ADC_INTERFACE, AD_ADC_REG_SIZE_ADC_INTERFACE, adc_regs.adc_interface));
 
     //configure the filter
-    AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, AD_BITS_ODR_100);
+    AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, AD_BITS_ODR_1K);
     AD_WRITE_BITS(adc_regs.filter, AD_MASK_FILT_ORDER, AD_BITS_ORD_SINC51);
     AD_WRITE_BITS(adc_regs.filter, AD_MASK_EFILT_SEL, AD_BITS_EFILT_UNDEF);
     AD_CLEAR_BITS(adc_regs.filter, AD_MASK_EFILT_EN);
