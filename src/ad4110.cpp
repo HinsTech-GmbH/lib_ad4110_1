@@ -135,7 +135,7 @@ el::retcode AD4110::xmitBytesDMA(uint8_t _size)
 
     // start transfer
     cs_pin.write(0);
-    status = HAL_SPI_TransmitReceive_IT(&hspi, spi_write_buffer, spi_read_buffer, _size);
+    status = HAL_SPI_TransmitReceive_DMA(&hspi, spi_write_buffer, spi_read_buffer, _size);
 
     // check outcome 
     if (status == HAL_BUSY)
@@ -464,6 +464,8 @@ void AD4110::readyInterruptHandler()
         spi_write_buffer[4] = 0;
 
         single_read_status = xmitBytesDMA(data_len);
+        if (single_read_status != el::retcode::ok)
+            goto error;
     }
     // Otherwise, the data register can just be read with normal size
     else
@@ -475,6 +477,8 @@ void AD4110::readyInterruptHandler()
         spi_write_buffer[3] = 0;
 
         single_read_status = xmitBytesDMA(data_len);
+        if (single_read_status != el::retcode::ok)
+            goto error;
     }
 
 
@@ -488,6 +492,21 @@ void AD4110::readyInterruptHandler()
 
     }
 
+    // regular exit
+    return;
+
+    // error exit
+error:
+
+    BaseType_t higher_priority_task_woken, result;
+    result = xEventGroupSetBitsFromISR(
+        event_group,
+        AD_EVG_IT_READ_FAIL,
+        &higher_priority_task_woken
+    );
+
+    if (result != pdFAIL)
+        portYIELD_FROM_ISR(higher_priority_task_woken);
     
 }
 

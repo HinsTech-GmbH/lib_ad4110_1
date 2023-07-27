@@ -294,7 +294,7 @@ public:
     /**
      * @brief method to be called in the SPI TxRx
      * complete ISR (or the callback) which is fired
-     * whenever IT or DMA TransmitReceive feature is done.
+     * whenever IT or DMA TransmitReceive operation is done.
      */
     void xmitCompleteHandler();
 
