@@ -71,8 +71,15 @@ private:    // data
     // and is paused, the part of the program that paused the stream to temporarily access the chip must resume it after
     // is done with the access. This is handled by giveChipAccess and the ADScopedAccess helper class.
     bool stream_paused = false;
-    // a flag set by getChipAccess to tell the stream processor to pause continuous stream reading and temporarily give up access.
-    bool stream_pause_enquiry = false;
+    // a flag set by getChipAccess to tell the stream processor to stop continuous stream reading and give semaphore access away.
+    bool stream_stop_enquiry = false;
+    // enumeration set by interrupts in stream mode so that the stream stop function can
+    // detect in what phase of the transfer the stream processor is and stop it propery
+    enum class frame_phase_t
+    {
+        AWAITING_READY,
+        DMA_IN_PROGRESS
+    } frame_phase;
 
     // status code variable set in interrupt handler during single read initiation so 
     // the blocking code waiting for the interrupt can read the result.
@@ -272,6 +279,26 @@ public:
     el::retcode updateStatus();
 
     /**
+     * @brief starts automatic streaming of ADC data in the background
+     * using DMA and interrupts
+     * 
+     * @return el::retcode
+     * @retval ok - stream started
+     * @retval nak - stream was already running
+     * @retval nolock - couldn't get access to device in time
+     */
+    el::retcode startStream();
+
+    /**
+     * @brief stops the automatic streaming of ADC data in the background.
+     * 
+     * @return el::retcode 
+     * @retval ok - stream stopped
+     * @retval nak - stream wasn't running
+     */
+    el::retcode stopStream();
+
+    /**
      * @brief waits for the next ADC sample to become ready for reading and 
      * reads it. The waiting task is performed CPU-saving using interrupts
      * and FreeRTOS event groups. Other tasks can run while waiting for 
@@ -285,6 +312,7 @@ public:
      */
     el::retcode readData(uint32_t *_output);
 
+
     /**
      * @brief method to be called in the ISR of the ready pin
      * (when the ready pin goes low)
@@ -297,6 +325,8 @@ public:
      * whenever IT or DMA TransmitReceive operation is done.
      */
     void xmitCompleteHandler();
+
+    uint32_t getLatestRawValue();
 
 };
 
