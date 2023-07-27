@@ -206,7 +206,7 @@ struct ad_regs_adc_t
 #define AD_BITS_RSENSE_EXT  (0b1 << 2)      // AFE_CNTRL2 Sense resistor external
 #define AD_BITS_RSENSE_INT  (0b0 << 2)      // AFE_CNTRL2 Sense resistor internal
 #define AD_BITS_MODE_I      (0b1 << 1)      // AFE_CNTRL2 Current mode
-#define AD_BITS_MODE_V      (0b1 << 1)      // AFE_CNTRL2 Voltage mode
+#define AD_BITS_MODE_V      (0b0 << 1)      // AFE_CNTRL2 Voltage mode
 
 // PGA_RTD_CTRL Register
 #define AD_MASK_RTD_3W4W    (0b1 << 15)     // PGA_RTD_CTRL Configure for 2/3 Wire (1) or 4 wire (0) RTD mode

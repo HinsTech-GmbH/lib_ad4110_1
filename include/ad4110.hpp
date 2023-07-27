@@ -206,6 +206,10 @@ private:    // methods
 public:
 
     /**
+     * Initialization functions.
+     */
+
+    /**
      * @brief Construct a new AD4110 driver instance
      *
      * @param _hspi The SPI peripheral the AD4110-1 chip is connected to
@@ -270,7 +274,172 @@ public:
     el::retcode setup();
 
     /**
-     * @brief reads the status registers from the chip and aborts
+     * Configuration functions.
+     * 
+     * These don't read data from the AD4110-1 but
+     * rather configure it.
+     */
+
+    /**
+     * @brief enumeration used to specify whether a part
+     * (such as a current sense resistor) is internal
+     * or external
+     */
+    enum int_ext_t
+    {
+        INTERNAL,
+        EXTERNAL
+    };
+
+    /**
+     * @brief selects between an internal and external current 
+     * sense resistor.
+     * 
+     * @param _resistor INTERNAL or EXTERNAL
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid selection
+     */
+    el::retcode selectRSense(int_ext_t _resistor);
+
+    /**
+     * @brief selects between an internal and external RTD
+     * reference resistor
+     * 
+     * @param _resistor INTERNAL or EXTERNAL
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid selection
+     */
+    el::retcode selectRRTD(int_ext_t _resistor);
+
+    /**
+     * @brief selects between an internal and external 
+     * 2.5V voltage reference
+     * 
+     * @param _reference INTERNAL or EXTERNAL
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid selection
+     */
+    el::retcode selectVoltageReference(int_ext_t _reference);
+
+    /**
+     * @brief enumeration to specify the ADC channel
+     */
+    enum channel_t
+    {
+        CH0_HV = 0,
+        CH1_LV1 = 1,
+        CH2_LV2 = 2,
+        CH3_LVDIFF = 3
+    };
+
+    /**
+     * @brief enables channel _ch
+     * 
+     * @param _ch channel 
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid channel
+     */
+    el::retcode enableChannel(channel_t _ch);
+
+    /**
+     * @brief disables channel _ch
+     * 
+     * @param _ch channel 
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid channel
+     */
+    el::retcode disableChannel(channel_t _ch);
+
+    enum sample_rate_t
+    {
+        SR_125K_SPS = 0,
+        SR_62K5_SPS,
+        SR_31K2_SPS,
+        SR_25K_SPS,
+        SR_15K6_SPS,
+        SR_10K4_SPS,
+        SR_5K_SPS,
+        SR_2K5_SPS,
+        SR_1K_SPS,
+        SR_500_SPS,
+        SR_400_SPS,
+        SR_200_SPS,
+        SR_100_SPS,
+        SR_60_SPS,
+        SR_50_SPS,
+        SR_20_SPS,
+        SR_16_SPS,
+        SR_10_SPS,
+        SR_5_SPS
+    };
+
+    /**
+     * @brief set the sample rate.
+     * 
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid sample rate
+     */
+    el::retcode setSampleRate(sample_rate_t _sr);
+
+    /**
+     * @brief enumeration for all the modes the input can be configured for
+     */
+    enum input_mode_t
+    {
+        IM_VOLTAGE, // Voltage measurement (+-10V)
+        IM_CURRENT, // Current measurement (+-20mA)
+        IM_RTD2W,   // 2 Wire resistive measurement
+        IM_RTD3W,   // 3 Wire resistive measurement
+        IM_RTD4W,   // 4 Wire resistive measurement
+        IM_THERMO   // Junction thermocouple measurement
+    };
+
+    /**
+     * @brief configures the AD4110-1 for the desired
+     * measurement. This feature selects the most commonly
+     * used configuration of additional features such as bias voltage
+     * and pull up/down currents.
+     * This function may need to configure multiple registers.
+     * As soon as one write fails, it returns the error
+     * 
+     * @param _input_mode the measurement mode (aka. what you want to measure)
+     * @return el::retcode 
+     * @retval see writeRegister()
+     * @retval invalid - can also mean invalid input mode
+     */
+    el::retcode setInputMode(input_mode_t _input_mode);
+
+    /**
+     * @brief turns the bias voltage on/off
+     * 
+     * @param _on true = on, false = off
+     * @return el::retcode 
+     * @retval see writeRegister()
+     */
+    el::retcode setBiasVoltage(bool _on);
+
+    
+
+
+    /**
+     * Information read operations.
+     * Data streaming, reading status.
+     */
+
+    /**
+     * @return uint32_t latest raw value read from chip that
+     * is stored in the register cache
+     */
+    uint32_t getLatestRawValue();
+
+    /**
+     * @brief reads all the status registers from the chip and aborts
      * as soon as one read fails.
      * 
      * @return el::retcode 
@@ -288,7 +457,7 @@ public:
      * @retval nolock - couldn't get access to device in time
      */
     el::retcode startStream();
-
+    
     /**
      * @brief stops the automatic streaming of ADC data in the background.
      * 
@@ -314,6 +483,12 @@ public:
 
 
     /**
+     * External infrastructure.
+     * Event handlers that need to be called from an external
+     * ISR.
+     */
+
+    /**
      * @brief method to be called in the ISR of the ready pin
      * (when the ready pin goes low)
      */
@@ -325,8 +500,6 @@ public:
      * whenever IT or DMA TransmitReceive operation is done.
      */
     void xmitCompleteHandler();
-
-    uint32_t getLatestRawValue();
 
 };
 
