@@ -30,26 +30,6 @@
 #define AD_SPI_BUFFER_SIZE 8
 
 
-class AD4110;
-
-class ADScopedAccess
-{
-    AD4110 &ad;
-
-public:
-    ADScopedAccess(AD4110 &_ad)
-        : ad(_ad)
-    {
-        ad.getChipAccess();
-    }
-
-    ~ADScopedAccess()
-    {
-        ad.giveChipAccess();
-    }
-    
-};
-
 class AD4110
 {
 private:    // data
@@ -74,20 +54,29 @@ private:    // data
     StaticEventGroup_t event_group_buffer;
     EventGroupHandle_t event_group;
 
-    // enumeration used to store the current state of non-blocking
-    // communication for reading ADC data register
-    enum class comm_state_t
+    // enumeration indicating what the interrupt handlers should do. This is set by
+    // the stream processor or the single data read function to configure the interrupts 
+    // for the required purpose
+    enum class int_func_t
     {
-        IDLE,                   // the controller is idle, no data reading active
-        SINGLE_READ_ACTIVE,     // the controller is currently doing a single read (and will be done after that)
-        STREAM_READ_ACTIVE,     // the controller is currently doing a continuous read and will need to be stopped/paused to access the SPI interface
-    } comm_state;
+        IDLE,           // the controller is idle, no data reading active in the background, interrupts do  nothing
+        SINGLE_READ,    // single read in progress in the background, interrupts need to handle that and then stop
+        STREAM_READ,    // continuous stream read in progress, interrupts need to continuously refresh the stream read
+    } int_func;
 
-    // a continuous read is currently paused for the program to access the SPI interface
+    // a flag indicating that continuous steam reading is enabled.
+    bool stream_enabled = false;
+    // a continuous stream reading is currently paused for the program to access the SPI interface. While this flag is set,
+    // the stream might still be enabled (which is defined by the stream_enabled flag). If the stream is still enabled
+    // and is paused, the part of the program that paused the stream to temporarily access the chip must resume it after
+    // is done with the access. This is handled by giveChipAccess and the ADScopedAccess helper class.
     bool stream_paused = false;
-
-    // a flag set by getChipAccess to tell the stream processor to pause continuous reading and temporarily give up access.
+    // a flag set by getChipAccess to tell the stream processor to pause continuous stream reading and temporarily give up access.
     bool stream_pause_enquiry = false;
+
+    // status code variable set in interrupt handler during single read initiation so 
+    // the blocking code waiting for the interrupt can read the result.
+    el::retcode single_read_status = el::retcode::ok;
 
     // semaphore go guard device access (especially in combination with non-blocking background data streaming)
     StaticSemaphore_t sem_buffer_device_guard;
@@ -135,6 +124,19 @@ private:    // methods
     el::retcode xmitBytes(uint8_t _size);
 
     /**
+     * @brief same as xmitBytes but non-blocking. It uses HAL SPI DMA functions
+     * to start an SPI Transmit+Receive operation with _size bytes and returns immediately.
+     * This does not use any cpu until the entire SPI frame has been transmitted/received.
+     * 
+     * @param _size 
+     * @return el::retcode 
+     * @retval ok - started successfully
+     * @retval busy - SPI already busy
+     * @retval err - some other SPI error
+     */
+    el::retcode xmitBytesDMA(uint8_t _size);
+
+    /**
      * @brief writes to a register of the AD4110-1. It simply sends the write command and then
      * the data.
      * 
@@ -176,6 +178,10 @@ private:    // methods
      * @brief pauses any possible background data fetching
      * the chip and makes sure no other task apart from the calling one
      * can access the chip until giveChipAccess is called using a semaphore.
+     * 
+     * @return el::retcode
+     * @retval ok - access acquired
+     * @retval nolock - timeout while taking semaphore
      */
     el::retcode getChipAccess();
     
@@ -184,7 +190,7 @@ private:    // methods
      * allowing others to access it and resumes any background data
      * fetching if it was paused by getChipAccess() before.
      */
-    el::retcode giveChipAccess();
+    void giveChipAccess();
 
     // friend declaration so ADScopedAccess can call the above two methods
     friend class ADScopedAccess;
@@ -274,7 +280,7 @@ public:
      * @param _output [out] data received from ADC.
      * @return el::retcode 
      * @retval see readRegister()
-     * @retval busy - can also mean a read is already happening in the background
+     * @retval invalid - can also mean invalid interrupt configuration (aka. int_func wasn't set to IDLE before getting access which should always happen)
      * @retval timeout - can also mean that ready signal was never received
      */
     el::retcode readData(uint32_t *_output);
@@ -285,7 +291,33 @@ public:
      */
     void readyInterruptHandler();
 
+    /**
+     * @brief method to be called in the SPI TxRx
+     * complete ISR (or the callback) which is fired
+     * whenever IT or DMA TransmitReceive feature is done.
+     */
+    void xmitCompleteHandler();
 
-   
+};
 
+
+class ADScopedAccess
+{
+    AD4110 *ad;
+
+public:
+
+    el::retcode status;
+    
+    ADScopedAccess(AD4110 *_ad)
+        : ad(_ad)
+    {
+        status = ad->getChipAccess();
+    }
+
+    ~ADScopedAccess()
+    {
+        ad->giveChipAccess();
+    }
+    
 };

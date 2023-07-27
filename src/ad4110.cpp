@@ -19,8 +19,9 @@
 
 
 #define AD_EVG_IT_READY         (0b1 << 0)
-#define AD_EVG_IT_SPI_TX_DONE   (0b1 << 1)
-#define AD_EVG_IT_SPI_RX_DONE   (0b1 << 2)
+#define AD_EVG_IT_READ_DONE     (0b1 << 1)
+#define AD_EVG_IT_READ_FAIL     (0b1 << 2)
+
 
 
 AD4110::AD4110(
@@ -121,6 +122,40 @@ cleanup:
     return retval;
 }
 
+el::retcode AD4110::xmitBytesDMA(uint8_t _size)
+{
+    el::retcode retval = el::retcode::ok;
+    HAL_StatusTypeDef status;
+
+    if (hspi.State != HAL_SPI_STATE_READY)
+    {
+        retval = el::retcode::busy;
+        goto cleanup;
+    }
+
+    // start transfer
+    cs_pin.write(0);
+    status = HAL_SPI_TransmitReceive_IT(&hspi, spi_write_buffer, spi_read_buffer, _size);
+
+    // check outcome 
+    if (status == HAL_BUSY)
+    {
+        // don't reset pin because it is probably used by 
+        // something else (should not happen normally anyway)
+        retval = el::retcode::busy;
+        goto cleanup;
+    }
+    else if (status != HAL_OK)
+    {
+        cs_pin.write(1);
+        retval = el::retcode::err;
+        goto cleanup;
+    }
+
+cleanup:
+    return retval;
+}
+
 el::retcode AD4110::writeRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t _data)
 {
     // prepare command and data
@@ -191,63 +226,26 @@ el::retcode AD4110::readRegister(uint8_t _reg, ad_reg_size_t _size, uint32_t *_d
 
 el::retcode AD4110::getChipAccess()
 {
-    switch (comm_state)
+    if (stream_enabled && !stream_paused)
     {
-    // on IDLE an single read we just wait until we get access (instantly on idle, a few ms on single read)
-    case comm_state_t::IDLE:
-    case comm_state_t::SINGLE_READ_ACTIVE:
-        if (!xSemaphoreTake(sem_device_guard, timeout_ticks));
-            return el::retcode::nolock;
-        return el::retcode::ok;
-        break;
-
-    // in continuous read mode we ask for the read to be paused and then take ownership.
-    case comm_state_t::STREAM_READ_ACTIVE:
-        if (stream_paused)
-        {
-            // if the continuous read operation is already paused, another task (or possibly even the same one)
-            // as already acquired access. This should not happen and will cause errors.
-            return el::retcode::err;
-        }
         // ask stream reader for access
         stream_pause_enquiry = true;
-        if (!xSemaphoreTake(sem_device_guard, timeout_ticks));
-        {
-            stream_pause_enquiry = false;
-            return el::retcode::nolock;
-        }
-        return el::retcode::ok;
-        break;
-    
-    // invalid state
-    default:
-        el::retcode::invalid;
-        break;
+        // TODO: ...pause the stream
     }
+
+    // wait for everything to finish and then get access
+    if (!xSemaphoreTake(sem_device_guard, timeout_ticks))
+        return el::retcode::nolock;
+    return el::retcode::ok;
 }
 
-el::retcode AD4110::giveChipAccess()
+void AD4110::giveChipAccess()
 {
-    switch (comm_state)
+    xSemaphoreGive(sem_device_guard);
+    // if the stream was paused, we resume it
+    if (stream_paused)
     {
-    // on everything but paused we just give back access
-    case comm_state_t::IDLE:
-    case comm_state_t::SINGLE_READ_ACTIVE:
-    case comm_state_t::STREAM_READ_ACTIVE:
-        if (!xSemaphoreGive(sem_device_guard));
-            return el::retcode::nolock;
-        // if the stream was paused, we resume it
-        if (stream_paused)
-        {
-            // TODO: implement stream feature and therefore stream resuming
-        }
-        return el::retcode::ok;
-        break;
-    
-    // invalid state
-    default:
-        el::retcode::invalid;
-        break;
+        // TODO: implement stream feature and therefore stream resuming
     }
 }
 
@@ -385,70 +383,148 @@ el::retcode AD4110::updateStatus()
 
 el::retcode AD4110::readData(uint32_t *_output)
 {
-    if (comm_state != comm_state_t::IDLE)
-        return el::retcode::busy;
+    // get access
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
+    // if interrupts are not configured to idle, something has gone wrong
+    if (int_func != int_func_t::IDLE)
+        return el::retcode::invalid;
 
-    comm_state = comm_state_t::SINGLE_READ_ACTIVE;
+    // we now cofigure interrupts for single read mode
+    int_func = int_func_t::SINGLE_READ;
 
-    // enable chip and wait for ready to become low
+    // enable chip and wait for ready signal to become low
     ready_pin.clearPendingInterrupt();
     ready_pin.enableInterrupt();
     cs_pin.write(0);
     auto bits = xEventGroupWaitBits(
         event_group,
-        AD_EVG_IT_READY,
+        AD_EVG_IT_READ_DONE | AD_EVG_IT_READ_FAIL,
         pdTRUE,
         pdFALSE,
         timeout_ticks
     );
 
-    ready_pin.disableInterrupt();
-
+    // on error (error while starting SPI DMA feature)
+    if (bits & AD_EVG_IT_READ_FAIL)
+    {
+        cs_pin.write(1);
+        int_func = int_func_t::IDLE;
+        return single_read_status;
+    }
+    // timeout (likely bc chip is misconfigured)
     if (!bits)
     {
         cs_pin.write(1);
-        comm_state = comm_state_t::IDLE;
+        int_func = int_func_t::IDLE;
         return el::retcode::timeout;
     }
 
-    // ready interrupt received, start reading data
-
-    // if DATA_STAT bit is set, the ADC_STATUS register is appended to the data register,
-    // making it one byte longer and requiring the two to be split up
-    if (AD_TEST_BITS(adc_regs.adc_interface, AD_MASK_DATA_STAT))
-    {
-        EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, (ad_reg_size_t)(AD_ADC_REG_SIZE_DATA + AD_ADC_REG_SIZE_ADC_STATUS), &adc_regs.data));
-        adc_regs.adc_status = adc_regs.data & 0xff; // lowest byte contains status reg
-        adc_regs.data >>= 8;                        // throw out the status reg from the data
-    }
-    // Otherwise, the data register can just be read like normal
-    else
-    {
-        EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, AD_ADC_REG_SIZE_DATA, &adc_regs.data));
-    }
-
-
+    // read done signal received, disable interrupt function and return data
+    cs_pin.write(1);    // should already be the done in SPI done handler but just to make sure
     *_output = adc_regs.data;
-
-    cs_pin.write(1);    // should already be the case but just to make sure
-    comm_state = comm_state_t::IDLE;
+    int_func = int_func_t::IDLE;
     return el::retcode::ok;
+
+    //// if DATA_STAT bit is set, the ADC_STATUS register is appended to the data register,
+    //// making it one byte longer and requiring the two to be split up
+    //if (AD_TEST_BITS(adc_regs.adc_interface, AD_MASK_DATA_STAT))
+    //{
+    //    EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, (ad_reg_size_t)(AD_ADC_REG_SIZE_DATA + AD_ADC_REG_SIZE_ADC_STATUS), &adc_regs.data));
+    //    adc_regs.adc_status = adc_regs.data & 0xff; // lowest byte contains status reg
+    //    adc_regs.data >>= 8;                        // throw out the status reg from the data
+    //}
+    //// Otherwise, the data register can just be read like normal
+    //else
+    //{
+    //    EL_RETURN_IF_NOT_OK(readRegister(AD_ADC_REG_ADDR_DATA, AD_ADC_REG_SIZE_DATA, &adc_regs.data));
+    //}
 }
 
 void AD4110::readyInterruptHandler()
 {
+    // disable any further interrupts (needed for both stream and single reading)
+    ready_pin.disableInterrupt();
+
+    // shouldn't happen but just in case we don't do anything.
+    if (int_func == int_func_t::IDLE) return;
+
+    // start receiving data (both in single and in stream mode)
+
+    // if DATA_STAT bit is set, the ADC_STATUS register is appended to the data register,
+    // making it one byte longer
+    if (AD_TEST_BITS(adc_regs.adc_interface, AD_MASK_DATA_STAT))
+    {
+        uint8_t data_len = (AD_ADC_REG_SIZE_DATA + AD_ADC_REG_SIZE_ADC_STATUS) + 1;   // +1 byte for command
+        spi_write_buffer[0] = AD_READ | AD_ADDR(address) | AD_ADC_REG_ADDR_DATA;
+        spi_write_buffer[1] = 0;
+        spi_write_buffer[2] = 0;
+        spi_write_buffer[3] = 0;
+        spi_write_buffer[4] = 0;
+
+        single_read_status = xmitBytesDMA(data_len);
+    }
+    // Otherwise, the data register can just be read with normal size
+    else
+    {
+        uint8_t data_len = AD_ADC_REG_SIZE_DATA + 1;   // +1 byte for command
+        spi_write_buffer[0] = AD_READ | AD_ADDR(address) | AD_ADC_REG_ADDR_DATA;
+        spi_write_buffer[1] = 0;
+        spi_write_buffer[2] = 0;
+        spi_write_buffer[3] = 0;
+
+        single_read_status = xmitBytesDMA(data_len);
+    }
+
+
+    // TODO: we might need to do something here?
+    if (int_func == int_func_t::SINGLE_READ)
+    {
+        
+    }
+    else if (int_func == int_func_t::STREAM_READ)
+    {
+
+    }
+
+    
+}
+
+void AD4110::xmitCompleteHandler()
+{
     BaseType_t higher_priority_task_woken, result;
 
-    // disable any further interrupts
-    //ready_pin.disableInterrupt();
+    // in single read mode, we just start to read the register
+    if (int_func == int_func_t::SINGLE_READ)
+    {
+        // end the frame and disable chip
+        cs_pin.write(1);    
+        
+        // process the received data
+        // if we have data stat enabled, also read the status byte
+        if (AD_TEST_BITS(adc_regs.adc_interface, AD_MASK_DATA_STAT))
+        {
+            adc_regs.adc_status = spi_read_buffer[4];
+        }
+        // always read the data bytes
+        adc_regs.data = spi_read_buffer[1] << 16 | spi_read_buffer[2] << 8 | spi_read_buffer[3];
 
-    // notify blocking task
-    result = xEventGroupSetBitsFromISR(
-        event_group,
-        AD_EVG_IT_READY,
-        &higher_priority_task_woken
-    );
+        // notify blocking task that we are done
+        result = xEventGroupSetBitsFromISR(
+            event_group,
+            AD_EVG_IT_READ_DONE,
+            &higher_priority_task_woken
+        );
 
-    if (result != pdFAIL)
-        portYIELD_FROM_ISR(higher_priority_task_woken);
+        if (result != pdFAIL)
+            portYIELD_FROM_ISR(higher_priority_task_woken);
+
+    }
+    else if (int_func == int_func_t::STREAM_READ)
+    {
+        // TODO: restart for next session
+    }
+
+    
 }
