@@ -13,6 +13,9 @@
 
 el::retcode AD4110::setInputMode(input_mode_t _input_mode)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     switch (_input_mode)
     {
 
@@ -165,6 +168,9 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
 
 el::retcode AD4110::selectRSense(int_ext_t _resistor)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     if (_resistor == INTERNAL)
     {
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_EXT_R_SEL, AD_BITS_RSENSE_INT);
@@ -183,6 +189,9 @@ el::retcode AD4110::selectRSense(int_ext_t _resistor)
 
 el::retcode AD4110::selectRRTD(int_ext_t _resistor)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     if (_resistor == INTERNAL)
     {
         AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_EXT_RTD_RES, AD_BITS_RTD_RES_INT);
@@ -201,6 +210,9 @@ el::retcode AD4110::selectRRTD(int_ext_t _resistor)
 
 el::retcode AD4110::selectVoltageReference(int_ext_t _reference)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     if (_reference == INTERNAL)
     {
         AD_WRITE_BITS(adc_regs.adc_config, AD_MASK_REF_SEL, AD_BITS_REF_INT);
@@ -226,6 +238,9 @@ static uint8_t channel_bits[] = {
 };
 el::retcode AD4110::enableChannel(channel_t _ch)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     if (_ch < 0 || _ch > 3) return el::retcode::invalid;
 
     AD_SET_BITS(adc_regs.adc_config, channel_bits[_ch]);
@@ -234,6 +249,9 @@ el::retcode AD4110::enableChannel(channel_t _ch)
 }
 el::retcode AD4110::disableChannel(channel_t _ch)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     if (_ch < 0 || _ch > 3) return el::retcode::invalid;
 
     AD_CLEAR_BITS(adc_regs.adc_config, channel_bits[_ch]);
@@ -264,6 +282,9 @@ static uint8_t sample_rate_bits[] = {
 };
 el::retcode AD4110::setSampleRate(sample_rate_t _sr)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     if (_sr < 0 || _sr > SR_5_SPS) return el::retcode::invalid;
 
     AD_WRITE_BITS(adc_regs.filter, AD_MASK_ODR, sample_rate_bits[_sr]);
@@ -273,6 +294,9 @@ el::retcode AD4110::setSampleRate(sample_rate_t _sr)
 
 el::retcode AD4110::setBiasVoltage(bool _on)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, _on ? AD_BITS_VBIAS_ON50 : AD_BITS_VBIAS_OFF);
     
     return writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2);
@@ -280,6 +304,9 @@ el::retcode AD4110::setBiasVoltage(bool _on)
 
 el::retcode AD4110::setGain(gain_t _gain)
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, (int)_gain);  // the gain_t enumerates to the correct bit values atm
     
     return writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl);

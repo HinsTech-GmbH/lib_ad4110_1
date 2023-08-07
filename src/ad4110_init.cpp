@@ -44,6 +44,9 @@ void AD4110::initialize()
 
 el::retcode AD4110::reset()
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+
     uint8_t data_len = 8;
     memset(spi_write_buffer, 0xff, data_len);
 
@@ -52,6 +55,9 @@ el::retcode AD4110::reset()
 
 el::retcode AD4110::loadAllRegisters()
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     // AFE registers
     EL_RETURN_IF_NOT_OK(readRegister(AD_AFE_REG_ADDR_AFE_TOP_STATUS,         AD_AFE_REG_SIZE_AFE_TOP_STATUS,        &afe_regs.afe_top_status));
     EL_RETURN_IF_NOT_OK(readRegister(AD_AFE_REG_ADDR_AFE_CNTRL1,             AD_AFE_REG_SIZE_AFE_CNTRL1,            &afe_regs.afe_cntrl1));
@@ -87,6 +93,9 @@ el::retcode AD4110::loadAllRegisters()
 
 el::retcode AD4110::writeAllRegisters()
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL1,               AD_AFE_REG_SIZE_AFE_CNTRL1,         afe_regs.afe_cntrl1));
     EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CLK_CTRL,             AD_AFE_REG_SIZE_AFE_CLK_CTRL,       afe_regs.afe_clk_ctrl));
     EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2,               AD_AFE_REG_SIZE_AFE_CNTRL2,         afe_regs.afe_cntrl2));
@@ -112,6 +121,9 @@ el::retcode AD4110::writeAllRegisters()
 
 el::retcode AD4110::setup()
 {
+    ADScopedAccess lock(this);
+    EL_RETURN_IF_NOT_OK(lock.status);
+    
     // configure ADC to route it's internal clock to CLKIO pin
     AD_WRITE_BITS(adc_regs.adc_mode, AD_MASK_ADC_CLK_SEL, AD_BITS_ADC_CLK_INT_IO);
     EL_RETURN_IF_NOT_OK(writeRegister(AD_ADC_REG_ADDR_ADC_MODE, AD_ADC_REG_SIZE_ADC_MODE, adc_regs.adc_mode));
