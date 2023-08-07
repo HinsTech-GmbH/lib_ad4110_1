@@ -7,6 +7,10 @@
         "type": "git",
         "url": "https://github.com/HinsTech-GmbH/lib_ad4110_1.git"
     },
+    "dependencies": {
+        "el-std": "https://github.com/melektron/el-std.git#v0.1.0",
+        "uc_std": "https://github.com/melektron/uc_std.git#v0.1.0"
+    },
     "frameworks": [
         "stm32cube",
         "espidf"
