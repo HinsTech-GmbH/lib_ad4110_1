@@ -424,7 +424,48 @@ public:
      */
     el::retcode setBiasVoltage(bool _on);
 
-    
+    /**
+     * @brief enumeration for all the gain configurations which enumerate to the bits
+     */
+    enum gain_t
+    {
+        GAIN_0p2 = AD_BITS_GAIN_0p2,
+        GAIN_0p25 = AD_BITS_GAIN_0p25,
+        GAIN_0p3 = AD_BITS_GAIN_0p3,
+        GAIN_0p375 = AD_BITS_GAIN_0p375,
+        GAIN_0p5 = AD_BITS_GAIN_0p5,
+        GAIN_0p75 = AD_BITS_GAIN_0p75,
+        GAIN_1 = AD_BITS_GAIN_1,
+        GAIN_1p5 = AD_BITS_GAIN_1p5,
+        GAIN_2 = AD_BITS_GAIN_2,
+        GAIN_3 = AD_BITS_GAIN_3,
+        GAIN_4 = AD_BITS_GAIN_4,
+        GAIN_6 = AD_BITS_GAIN_6,
+        GAIN_8 = AD_BITS_GAIN_8,
+        GAIN_12 = AD_BITS_GAIN_12,
+        GAIN_16 = AD_BITS_GAIN_16,
+        GAIN_24 = AD_BITS_GAIN_24,
+    };
+
+    /**
+     * @brief sets the input gain configuration. By default, gain
+     * is automatically set to 0.2 in all voltage modes (V, RTD, Thermo)
+     * and to 4 in current mode. Every time the input mode is changed,
+     * gain is reset to these defaults. If a different gain is required,
+     * it has to be set every time after changing the input mode.
+     * 
+     * You might want to increase the gain in Thermo and RTD modes because
+     * of the small voltages involved.
+     * 
+     * Caution: Setting the gain too high may damage the internal 
+     * circuitry of the AFE, so be careful. The gain should almost never 
+     * be changed in direct voltage mode
+     * 
+     * @param _gain the new gain to set (use enumeration type AD4110::gain_t, not AD_BITS_GAIN_... definitions)
+     * @return el::retcode 
+     * @retval see writeRegister()
+     */
+    el::retcode setGain(gain_t _gain);
 
 
     /**

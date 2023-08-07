@@ -28,6 +28,8 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
             AD_MASK_AINP_UP100 |
             AD_MASK_AINP_UP1
         );
+        AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, AD_BITS_GAIN_0p2);        // turn the gain down BEFORE enabling voltage mode
+        EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl));
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, AD_BITS_VBIAS_OFF);           // turn off the bias voltage
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_IMODE, AD_BITS_MODE_V);              // select voltage mode
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2));
@@ -52,6 +54,8 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2));
         AD_SET_BITS(afe_regs.afe_cntrl1, AD_MASK_DISRTD);                               // disable RTD feature
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL1, AD_AFE_REG_SIZE_AFE_CNTRL1, afe_regs.afe_cntrl1));
+        AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, AD_BITS_GAIN_4);          // turn the gain up AFTER enabling current mode
+        EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl));
         break;
 
     case input_mode_t::IM_RTD2W:
@@ -66,6 +70,8 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
             AD_MASK_AINP_UP100 |
             AD_MASK_AINP_UP1
         );
+        AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, AD_BITS_GAIN_0p2);        // turn the gain down BEFORE enabling voltage mode for safety
+        EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl));
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, AD_BITS_VBIAS_ON50);          // turn bias voltage on
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_IMODE, AD_BITS_MODE_V);              // select voltage mode
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2));
@@ -89,6 +95,8 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
             AD_MASK_AINP_UP100 |
             AD_MASK_AINP_UP1
         );
+        AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, AD_BITS_GAIN_0p2);        // turn the gain down BEFORE enabling voltage mode for safety
+        EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl));
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, AD_BITS_VBIAS_OFF);           // turn bias voltage off
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_IMODE, AD_BITS_MODE_V);              // select voltage mode
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2));
@@ -112,6 +120,8 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
             AD_MASK_AINP_UP100 |
             AD_MASK_AINP_UP1
         );
+        AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, AD_BITS_GAIN_0p2);        // turn the gain down BEFORE enabling voltage mode for safety
+        EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl));
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, AD_BITS_VBIAS_OFF);           // turn bias voltage off
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_IMODE, AD_BITS_MODE_V);              // select voltage mode
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2));
@@ -136,6 +146,8 @@ el::retcode AD4110::setInputMode(input_mode_t _input_mode)
             AD_MASK_AINP_UP100 |
             AD_MASK_AINP_UP1
         );
+        AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, AD_BITS_GAIN_0p2);        // turn the gain down BEFORE enabling voltage mode for safety
+        EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl));
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, AD_BITS_VBIAS_ON50);
         AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_IMODE, AD_BITS_MODE_V);
         EL_RETURN_IF_NOT_OK(writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2));
@@ -264,4 +276,11 @@ el::retcode AD4110::setBiasVoltage(bool _on)
     AD_WRITE_BITS(afe_regs.afe_cntrl2, AD_MASK_VBIAS, _on ? AD_BITS_VBIAS_ON50 : AD_BITS_VBIAS_OFF);
     
     return writeRegister(AD_AFE_REG_ADDR_AFE_CNTRL2, AD_AFE_REG_SIZE_AFE_CNTRL2, afe_regs.afe_cntrl2);
+}
+
+el::retcode AD4110::setGain(gain_t _gain)
+{
+    AD_WRITE_BITS(afe_regs.pga_rtd_ctrl, AD_MASK_GAIN_CH, (int)_gain);  // the gain_t enumerates to the correct bit values atm
+    
+    return writeRegister(AD_AFE_REG_ADDR_PGA_RTD_CTRL, AD_AFE_REG_SIZE_PGA_RTD_CTRL, afe_regs.pga_rtd_ctrl);
 }
