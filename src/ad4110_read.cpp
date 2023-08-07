@@ -27,9 +27,19 @@ el::retcode AD4110::updateStatus()
     return el::retcode::ok;
 }
 
-uint32_t AD4110::getLatestRawValue()
+uint32_t AD4110::getLatestValueRaw()
 {
     return adc_regs.data;
+}
+
+float AD4110::getLatestValue()
+{
+    return (adc_regs.data - 0x800000) * data_scaling_factor;
+}
+
+float AD4110::getMaximumInputValue()
+{
+    return max_input_value;
 }
 
 el::retcode AD4110::startStream()

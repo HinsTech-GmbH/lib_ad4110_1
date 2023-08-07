@@ -223,4 +223,42 @@ void AD4110::giveChipAccess()
     }
 }
 
+// conversion from gain_t enum to the gain factors it represents
+static float gain_factors[] = {
+    0.2,
+    0.25,
+    0.3,
+    0.375,
+    0.5,
+    0.75,
+    1,
+    1.5,
+    2,
+    3,
+    4,
+    6,
+    8,
+    12,
+    16,
+    24
+};
+void AD4110::calculateFactorsForVoltageWithGain(gain_t _gain)
+{
+    // by default, gain is 0.2. This would result in scaling_factor * 1.
+    // if gain is increased for example to 0.4 (which is not possible but just for 
+    // simplicity well use that value), the reported value will be twice as large
+    // while applying the sme voltage. To do so, we must half the factor, so now
+    // we get scaling_factor * 0.2/0.4 = scaling_factor * 0.5
+    float scaling_coefficient =  (gain_factors[GAIN_0p2] / gain_factors[_gain]);
 
+    data_scaling_factor = V_base_scaling_factor * scaling_coefficient;
+    max_input_value = 10.0f * scaling_coefficient;  // base = 10mA
+}
+void AD4110::calculateFactorsForCurrentWithGain(gain_t _gain)
+{
+    // same as with current, just with different values
+    float scaling_coefficient = (gain_factors[GAIN_4] / gain_factors[_gain]);
+    
+    data_scaling_factor = mA_base_scaling_factor * scaling_coefficient;
+    max_input_value = 20.0f * scaling_coefficient;  // base = 20mA
+}

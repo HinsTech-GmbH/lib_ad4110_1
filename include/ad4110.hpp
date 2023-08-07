@@ -32,7 +32,7 @@
 
 class AD4110
 {
-private:    // data
+private:    // data and types
     // The SPI peripheral the AD4110-1 chip is connected to
     SPI_HandleTypeDef &hspi;
     // The address of the AD4110-1 chip on the bus (this chip has a special way of using addresses over SPI)
@@ -92,10 +92,103 @@ private:    // data
     // global timeout for any operation
     TickType_t timeout_ticks;
 
+    // default conversion factors for both voltage and current mode
+    // in their default gain setting as provided by datasheet
+    static constexpr float mA_base_scaling_factor = 20.0f / (0xE24DD2 - 0x800000);    // for gain=4, acc. datasheet p. 25 Figure 38
+    static constexpr float V_base_scaling_factor = 10.0f / -(0x199999 - 0x800000);     // for gain=0.2, acc. datasheet p. 28 Figure 41 (there probably is an error in the datasheet or at least they provide the -10V value where the +10V value should be, so we just add a - to fix it)
+    // conversion factor used for processing the raw values.
+    // This is set depending on input mode and gain in
+    // setInputMode() and setGain() functions
+    float data_scaling_factor = 1;
+    // maximum input value allowed (in V/mA) at current gain setting (min is simply negative)
+    float max_input_value = 1;
 
-public:     // data
+    // register cache for AFE registers
     ad_regs_afe_t afe_regs;
+    // register cache for ADC registers
     ad_regs_adc_t adc_regs;
+
+public:     // data and types
+    /**
+     * @brief enumeration used to specify whether a part
+     * (such as a current sense resistor) is internal
+     * or external
+     */
+    enum int_ext_t
+    {
+        INTERNAL,
+        EXTERNAL
+    };
+
+    /**
+     * @brief enumeration to specify the ADC channel
+     */
+    enum channel_t
+    {
+        CH0_HV = 0,
+        CH1_LV1 = 1,
+        CH2_LV2 = 2,
+        CH3_LVDIFF = 3
+    };
+
+    enum sample_rate_t
+    {
+        SR_125K_SPS = 0,
+        SR_62K5_SPS,
+        SR_31K2_SPS,
+        SR_25K_SPS,
+        SR_15K6_SPS,
+        SR_10K4_SPS,
+        SR_5K_SPS,
+        SR_2K5_SPS,
+        SR_1K_SPS,
+        SR_500_SPS,
+        SR_400_SPS,
+        SR_200_SPS,
+        SR_100_SPS,
+        SR_60_SPS,
+        SR_50_SPS,
+        SR_20_SPS,
+        SR_16_SPS,
+        SR_10_SPS,
+        SR_5_SPS
+    };
+
+    /**
+     * @brief enumeration for all the modes the input can be configured for
+     */
+    enum input_mode_t
+    {
+        IM_VOLTAGE, // Voltage measurement (+-10V)
+        IM_CURRENT, // Current measurement (+-20mA)
+        IM_RTD2W,   // 2 Wire resistive measurement
+        IM_RTD3W,   // 3 Wire resistive measurement
+        IM_RTD4W,   // 4 Wire resistive measurement
+        IM_THERMO   // Junction thermocouple measurement
+    };
+
+    /**
+     * @brief enumeration for all the gain configurations which enumerate to the bits
+     */
+    enum gain_t
+    {
+        GAIN_0p2 = 0,
+        GAIN_0p25,
+        GAIN_0p3,
+        GAIN_0p375,
+        GAIN_0p5,
+        GAIN_0p75,
+        GAIN_1,
+        GAIN_1p5,
+        GAIN_2,
+        GAIN_3,
+        GAIN_4,
+        GAIN_6,
+        GAIN_8,
+        GAIN_12,
+        GAIN_16,
+        GAIN_24,
+    };
 
 private:    // methods
 
@@ -202,6 +295,28 @@ private:    // methods
     // friend declaration so ADScopedAccess can call the above two methods
     friend class ADScopedAccess;
 
+    /**
+     * @brief calculates the data conversion factor required
+     * to get the voltage in volts at a given gain setting
+     * and saves it in data_scaling_factor. It also calculates
+     * the minimum and maximum values allowed (in V) and
+     * saves them.
+     * 
+     * 
+     * @param _gain current gain setting (enumeration type)
+     */
+    void calculateFactorsForVoltageWithGain(gain_t _gain);
+
+    /**
+     * @brief calculates the data conversion factor required
+     * to get the current in milli-amps at a given gain setting
+     * and saves it in data_scaling_factor. It also calculates
+     * the minimum and maximum values allowed (in mA) and
+     * saves them.
+     * 
+     * @param _gain current gain setting (enumeration type)
+     */
+    void calculateFactorsForCurrentWithGain(gain_t _gain);
 
 public:
 
@@ -281,17 +396,6 @@ public:
      */
 
     /**
-     * @brief enumeration used to specify whether a part
-     * (such as a current sense resistor) is internal
-     * or external
-     */
-    enum int_ext_t
-    {
-        INTERNAL,
-        EXTERNAL
-    };
-
-    /**
      * @brief selects between an internal and external current 
      * sense resistor.
      * 
@@ -325,17 +429,6 @@ public:
     el::retcode selectVoltageReference(int_ext_t _reference);
 
     /**
-     * @brief enumeration to specify the ADC channel
-     */
-    enum channel_t
-    {
-        CH0_HV = 0,
-        CH1_LV1 = 1,
-        CH2_LV2 = 2,
-        CH3_LVDIFF = 3
-    };
-
-    /**
      * @brief enables channel _ch
      * 
      * @param _ch channel 
@@ -355,29 +448,6 @@ public:
      */
     el::retcode disableChannel(channel_t _ch);
 
-    enum sample_rate_t
-    {
-        SR_125K_SPS = 0,
-        SR_62K5_SPS,
-        SR_31K2_SPS,
-        SR_25K_SPS,
-        SR_15K6_SPS,
-        SR_10K4_SPS,
-        SR_5K_SPS,
-        SR_2K5_SPS,
-        SR_1K_SPS,
-        SR_500_SPS,
-        SR_400_SPS,
-        SR_200_SPS,
-        SR_100_SPS,
-        SR_60_SPS,
-        SR_50_SPS,
-        SR_20_SPS,
-        SR_16_SPS,
-        SR_10_SPS,
-        SR_5_SPS
-    };
-
     /**
      * @brief set the sample rate.
      * 
@@ -386,19 +456,6 @@ public:
      * @retval invalid - can also mean invalid sample rate
      */
     el::retcode setSampleRate(sample_rate_t _sr);
-
-    /**
-     * @brief enumeration for all the modes the input can be configured for
-     */
-    enum input_mode_t
-    {
-        IM_VOLTAGE, // Voltage measurement (+-10V)
-        IM_CURRENT, // Current measurement (+-20mA)
-        IM_RTD2W,   // 2 Wire resistive measurement
-        IM_RTD3W,   // 3 Wire resistive measurement
-        IM_RTD4W,   // 4 Wire resistive measurement
-        IM_THERMO   // Junction thermocouple measurement
-    };
 
     /**
      * @brief configures the AD4110-1 for the desired
@@ -423,29 +480,6 @@ public:
      * @retval see writeRegister()
      */
     el::retcode setBiasVoltage(bool _on);
-
-    /**
-     * @brief enumeration for all the gain configurations which enumerate to the bits
-     */
-    enum gain_t
-    {
-        GAIN_0p2 = AD_BITS_GAIN_0p2,
-        GAIN_0p25 = AD_BITS_GAIN_0p25,
-        GAIN_0p3 = AD_BITS_GAIN_0p3,
-        GAIN_0p375 = AD_BITS_GAIN_0p375,
-        GAIN_0p5 = AD_BITS_GAIN_0p5,
-        GAIN_0p75 = AD_BITS_GAIN_0p75,
-        GAIN_1 = AD_BITS_GAIN_1,
-        GAIN_1p5 = AD_BITS_GAIN_1p5,
-        GAIN_2 = AD_BITS_GAIN_2,
-        GAIN_3 = AD_BITS_GAIN_3,
-        GAIN_4 = AD_BITS_GAIN_4,
-        GAIN_6 = AD_BITS_GAIN_6,
-        GAIN_8 = AD_BITS_GAIN_8,
-        GAIN_12 = AD_BITS_GAIN_12,
-        GAIN_16 = AD_BITS_GAIN_16,
-        GAIN_24 = AD_BITS_GAIN_24,
-    };
 
     /**
      * @brief sets the input gain configuration. By default, gain
@@ -477,7 +511,34 @@ public:
      * @return uint32_t latest raw value read from chip that
      * is stored in the register cache
      */
-    uint32_t getLatestRawValue();
+    uint32_t getLatestValueRaw();
+
+    /**
+     * @brief returns the latest analog measurement value (the 
+     * value currently stored in the data register) in mA or V
+     * calculated using default gain settings (4 for current,
+     * 0.2 for everything else). If different gain or conversion is needed
+     * (e.g. for Type-K temp sensor or RTD measurement) the conversion can
+     * either post-process this value or start from scratch using the raw value
+     * getLatestValueRaw();
+     * 
+     * @return float processed measurement result in mA or V
+     */
+    float getLatestValue();
+
+    /**
+     * @brief returns the maximum (and inverted minimum)
+     * ALLOWED input value for the configured gain and input mode setting (V/mA).
+     * This does not mean that reported values cannot go above
+     * this value, there is still a margin of extra range above this, like always.
+     * The default is +-10V in voltage and +-20mA in current mode. If the gain
+     * is double the default, the value will be halved. If the gain is smaller than
+     * default, the value will not go over 10V or 20mA, as that is the maximum
+     * specified operating range of the IC.
+     * 
+     * @return float max (and inverted min) input value
+     */
+    float getMaximumInputValue();
 
     /**
      * @brief reads all the status registers from the chip and aborts
