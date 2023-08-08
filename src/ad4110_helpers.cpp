@@ -253,6 +253,7 @@ void AD4110::calculateFactorsForVoltageWithGain(gain_t _gain)
 
     data_scaling_factor = V_base_scaling_factor * scaling_coefficient;
     max_input_value = 10.0f * scaling_coefficient;  // base = 10mA
+    if (max_input_value > 10) max_input_value = 10;
 }
 void AD4110::calculateFactorsForCurrentWithGain(gain_t _gain)
 {
@@ -261,4 +262,5 @@ void AD4110::calculateFactorsForCurrentWithGain(gain_t _gain)
     
     data_scaling_factor = mA_base_scaling_factor * scaling_coefficient;
     max_input_value = 20.0f * scaling_coefficient;  // base = 20mA
+    if (max_input_value > 10) max_input_value = 20;
 }
